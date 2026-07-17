@@ -1,0 +1,9 @@
+node_modules/
+.next/
+.env
+.env.local
+.env.*.local
+*.log
+data/local-settings.json
+data/local-settings.json.tmp
+

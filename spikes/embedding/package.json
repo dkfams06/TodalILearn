@@ -1,0 +1,12 @@
+{
+  "name": "bible-study-embedding-spike",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "spike": "node spike.mjs",
+    "spike:actual": "node actual-documents.mjs"
+  },
+  "dependencies": {
+    "@huggingface/transformers": "3.7.2"
+  }
+}
