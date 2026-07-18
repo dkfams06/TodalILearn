@@ -11,10 +11,9 @@ export default async function LoginPage() {
       <section className="login-card">
         <p className="eyebrow">개인용 성경연구비서</p>
         <h1>가정예배 설교 AI</h1>
-        <p className="muted">기존 만나앱의 Supabase 계정으로 로그인하세요.</p>
+        <p className="muted">이 앱 전용 Supabase 계정으로 로그인하세요.</p>
         <LoginForm />
       </section>
     </main>
   )
 }
-

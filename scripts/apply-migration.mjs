@@ -6,12 +6,16 @@ import pg from 'pg'
 
 dotenv.config({ path: path.join(process.cwd(), '.env.local'), quiet: true })
 
-const migrationPath = path.join(
-  process.cwd(),
-  'supabase',
-  'migrations',
-  '001_family_worship_foundation.sql',
-)
+const migrationsDirectory = path.join(process.cwd(), 'supabase', 'migrations')
+const requestedMigration = process.argv[2] ?? 'supabase/migrations/001_family_worship_foundation.sql'
+const migrationPath = path.resolve(process.cwd(), requestedMigration)
+
+if (
+  !migrationPath.startsWith(`${migrationsDirectory}${path.sep}`) ||
+  path.extname(migrationPath).toLowerCase() !== '.sql'
+) {
+  throw new Error('supabase/migrations 아래의 SQL 파일만 적용할 수 있습니다.')
+}
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim()
 const databasePassword = process.env.SUPABASE_DB_PASSWORD?.trim()
@@ -34,7 +38,7 @@ const forbiddenPatterns = [
   /drop\s+table/i,
   /truncate\s+/i,
   /delete\s+from/i,
-  /alter\s+table\s+public\.sop_chunks/i,
+  /alter\s+table\s+public\.sop_chunks\s+(drop|rename|alter\s+column)/i,
 ]
 
 for (const pattern of forbiddenPatterns) {
@@ -44,6 +48,23 @@ for (const pattern of forbiddenPatterns) {
 }
 
 const password = encodeURIComponent(databasePassword ?? '')
+
+function normalizeConfiguredDatabaseUrl(url) {
+  if (!databasePassword) return url
+
+  const replacedPlaceholder = url
+    .replace('[YOUR-PASSWORD]', password)
+    .replace('<password>', password)
+
+  // The dashboard URI can become invalid when a raw password contains URL
+  // delimiters such as `@`. Always inject the separately configured password
+  // in encoded form while preserving the copied pooler username and host.
+  return replacedPlaceholder.replace(
+    /^(postgres(?:ql)?:\/\/[^:]+:).*(?=@[^@/]+(?::\d+)?\/)/,
+    `$1${password}`,
+  )
+}
+
 const poolerRegions = [
   'ap-northeast-1',
   'ap-northeast-2',
@@ -60,9 +81,7 @@ const connectionCandidates = [
   ...(configuredDatabaseUrl
     ? [{
         label: 'configured database URL',
-        url: configuredDatabaseUrl
-          .replace('[YOUR-PASSWORD]', password)
-          .replace('<password>', password),
+        url: normalizeConfiguredDatabaseUrl(configuredDatabaseUrl),
       }]
     : []),
   ...poolerRegions.map((region) => ({

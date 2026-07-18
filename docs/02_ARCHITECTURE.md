@@ -6,7 +6,7 @@
 
 - 한 명이 Windows PC에서 안정적으로 사용할 수 있어야 한다.
 - 임베딩 API 비용 없이 의미 검색을 제공해야 한다.
-- 기존 만나앱의 Supabase, 예언의 신 데이터, 성경 API, Anthropic 연동을 재사용해야 한다.
+- 앱 데이터와 인증은 전용 Supabase 프로젝트에 격리하고, 만나앱의 예언의 신 데이터만 검증 후 복사해야 한다.
 - 초기 품질을 빠르게 검증하고 이후 Vercel 웹앱과 로컬 연동 프로그램으로 분리할 수 있어야 한다.
 
 ## 확인된 기존 자산
@@ -18,7 +18,7 @@ Next.js 16
 React 19
 TypeScript
 Supabase Auth / PostgreSQL / pgvector
-Anthropic SDK
+Claude Code CLI / Claude.ai 구독
 GetBible Korean API
 sop_chunks 예언의 신 데이터
 ```
@@ -42,12 +42,12 @@ Windows PC
    └─ 설교 생성 파이프라인
           │
           ├─ GetBible API
-          ├─ Anthropic API
+          ├─ Claude Code `claude -p`
           └─ Supabase
              ├─ 옵시디언 원문
              ├─ 구조화 지식
              ├─ 검색 청크와 벡터
-             ├─ 기존 sop_chunks
+             ├─ 만나앱에서 복사한 sop_chunks
              └─ 완성 설교와 버전
 ```
 
@@ -127,22 +127,42 @@ E5 계열 사용 시 검색어에는 `query:`, 문서에는 `passage:` 접두어
 - 설교 구조 생성
 - 문장별 출처 지도 검증
 
+Sprint 5 연구 엔진의 실제 흐름:
+
+```text
+POST /api/research
+  → 입력 유형 분류
+  → Sprint 4 하이브리드 검색
+  → 구조화 문서 메타데이터의 성경 후보 수집
+  → GetBible 실제 절 조회·검증
+  → B*/K*/S* 고정 후보 ID 부여
+  → Claude Code 구독 구조화 종합
+  → 후보 ID·선택 상태 교차 검증
+  → 연구 묶음과 원문 위치 반환
+```
+
+Claude는 성경 직접 인용문을 생성하지 않는다. 대표·관련 `B*` ID와 해설만 반환하며 서버가 이미 검증한 GetBible 원문을 최종 응답에 결합한다. 사용자가 자료 선택을 바꾸면 같은 질의를 다시 검색해 현재 후보 집합과 대조하고, 선택하지 않은 자료는 Claude 입력과 연결 결과에서 제외한다.
+
 ## 외부 서비스 경계
 
 ### Supabase
 
 - 원문, 분석 결과, 벡터, 설교, 버전을 저장한다.
+- 만나앱과 분리된 이 앱 전용 프로젝트를 사용한다.
+- 만나앱의 `sop_chunks`는 원본을 변경하지 않고 행 수와 스키마를 검증해 복사한다.
 - 서비스 역할 키는 서버 측에서만 사용한다.
 - 개인용이어도 `user_id`와 RLS는 유지한다.
 
-### Anthropic
+### Claude Code 구독 실행기
 
 - 문서 구조화
 - 연구 종합
 - 설교 생성
 - 필요 시 후보 재정렬에 사용한다.
 
-임베딩에는 사용하지 않는다.
+모든 AI 생성 작업은 로컬 Claude Code CLI의 print mode로 실행한다. `--json-schema`로 구조화 출력을 검증하고, 파일이나 셸 도구가 필요하지 않은 호출에서는 모든 도구와 MCP를 비활성화한다. 자식 프로세스에 `ANTHROPIC_API_KEY`를 전달하지 않으며 Claude.ai Pro/Max 구독 로그인을 사용한다. 임베딩에는 사용하지 않는다.
+
+이 방식은 사용자의 로컬 로그인에 의존하므로 Vercel 서버에서 직접 실행할 수 없다. 향후 Vercel UI로 분리할 때 생성 작업은 Windows Local Companion이 담당한다.
 
 ### GetBible
 
@@ -164,7 +184,7 @@ Windows Local Companion
 
 ## 보안과 개인정보
 
-- API 키는 `.env.local`에만 저장하고 Git에 포함하지 않는다.
+- Claude.ai 로그인 자격 증명은 Claude Code가 관리하며 앱 환경변수나 DB에 복사하지 않는다.
 - 개인 상황 입력은 기본적으로 설교 레코드에 포함되므로 저장 여부를 UI에서 명확히 표시한다.
 - 로그에는 전체 개인 상황, API 키, 원문 전체를 출력하지 않는다.
 - Supabase 서비스 역할 키는 클라이언트 번들에 포함하지 않는다.
@@ -172,7 +192,4 @@ Windows Local Companion
 ## 미확정 사항
 
 - 로컬 앱을 `npm run dev` 수준으로 사용할지, 이후 Electron/Tauri로 패키징할지
-- GetBible 한국어 번역본의 정확한 명칭과 표시 문구
-- Anthropic 모델을 고정할지 환경변수로 선택할지
-
-Anthropic 모델 설정 방식은 Sprint 1에서 환경변수 검증과 함께 확정한다.
+- Claude Code 구독 사용량 제한에 도달했을 때 사용자에게 표시할 재시도 UX

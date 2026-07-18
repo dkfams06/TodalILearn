@@ -21,6 +21,8 @@ const expectedTables = [
   'obsidian_sources',
   'knowledge_resources',
   'knowledge_chunks',
+  'sop_chunks',
+  'sop_chunk_embeddings',
   'family_worship_sermons',
   'sermon_versions',
 ]
@@ -30,7 +32,8 @@ let failed = false
 for (const table of expectedTables) {
   const { count, error } = await supabase
     .from(table)
-    .select('*', { count: 'exact', head: true })
+    .select('id', { count: 'exact' })
+    .limit(1)
 
   if (error) {
     failed = true
@@ -40,16 +43,58 @@ for (const table of expectedTables) {
   }
 }
 
+const { error: sourceMetadataError } = await supabase
+  .from('obsidian_sources')
+  .select('id,frontmatter,sync_error')
+  .limit(1)
+
+if (sourceMetadataError) {
+  failed = true
+  console.error(`obsidian_sources Sprint 2 columns: ERROR ${sourceMetadataError.message}`)
+} else {
+  console.log('obsidian_sources Sprint 2 columns: OK')
+}
+
+const { error: resourceMetadataError } = await supabase
+  .from('knowledge_resources')
+  .select(
+    'id,source_content_hash,analysis_provider,analysis_input_tokens,analysis_output_tokens,analysis_error,analyzed_at',
+  )
+  .limit(1)
+
+if (resourceMetadataError) {
+  failed = true
+  console.error(`knowledge_resources Sprint 3 columns: ERROR ${resourceMetadataError.message}`)
+} else {
+  console.log('knowledge_resources Sprint 3 columns: OK')
+}
+
+const { data: providerRows, error: providerError } = await supabase
+  .from('knowledge_resources')
+  .select('analysis_provider')
+
+if (providerError) {
+  failed = true
+  console.error(`knowledge_resources analysis providers: ERROR ${providerError.message}`)
+} else {
+  const providerCounts = (providerRows ?? []).reduce((counts, row) => {
+    const provider = row.analysis_provider ?? 'unassigned'
+    counts[provider] = (counts[provider] ?? 0) + 1
+    return counts
+  }, {})
+  console.log(`knowledge_resources analysis providers: OK ${JSON.stringify(providerCounts)}`)
+}
+
 const { count: sopCount, error: sopError } = await supabase
   .from('sop_chunks')
-  .select('*', { count: 'exact', head: true })
+  .select('id', { count: 'exact' })
+  .limit(1)
 
 if (sopError) {
   failed = true
   console.error(`sop_chunks: ERROR ${sopError.message}`)
 } else {
-  console.log(`sop_chunks preserved: OK (${sopCount ?? 0} rows)`)
+  console.log(`sop_chunks import state: OK (${sopCount ?? 0} rows)`)
 }
 
 if (failed) process.exit(1)
-

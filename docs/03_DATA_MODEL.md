@@ -19,7 +19,7 @@ obsidian_devices
           ├─ knowledge_resources
           └─ knowledge_chunks
 
-sop_chunks (기존)
+sop_chunks (만나앱에서 복사)
 
 family_worship_sermons
     └─ sermon_versions
@@ -60,10 +60,12 @@ title text
 url text
 channel text
 published_at date
+frontmatter jsonb NOT NULL DEFAULT '{}'
 raw_markdown text NOT NULL
 content_hash text NOT NULL
 file_modified_at timestamptz
 sync_status text NOT NULL
+sync_error text
 source_deleted boolean DEFAULT false
 last_synced_at timestamptz
 created_at timestamptz
@@ -109,13 +111,21 @@ summary text
 key_claims jsonb
 illustrations jsonb
 applications jsonb
+source_content_hash text
 schema_version integer NOT NULL
 analysis_model text NOT NULL
 analysis_prompt_version text NOT NULL
 analysis_status text NOT NULL
+analysis_provider text
+analysis_input_tokens integer
+analysis_output_tokens integer
+analysis_error text
+analyzed_at timestamptz
 created_at timestamptz
 updated_at timestamptz
 ```
+
+`analysis_provider`는 호출 경로를 기록한다. Sprint 3에서 이미 완료된 기존 결과는 `anthropic-api`, 이후 로컬 구독으로 생성한 결과는 `claude-code-subscription`이다.
 
 의도적으로 포함하지 않는 필드:
 
@@ -158,34 +168,61 @@ source_id + chunk_index + embedding_version
 
 청크의 `content_start_offset`과 `content_end_offset`은 `raw_markdown` 기준 문자 offset으로 정의한다. 줄 번호는 원문 변경 시 쉽게 달라지므로 보조 값으로만 사용한다.
 
-## 기존 `sop_chunks`
+## 이전된 예언의 신 원문 `sop_chunks`
 
-현재 확인된 기본 필드:
-
-```text
-id
-book
-chapter
-title
-chunk_index
-content
-embedding
-created_at
-```
-
-Sprint 0에서 실제 운영 스키마를 조회하고 다음 필드 추가 필요성을 판단한다.
+만나앱 프로젝트의 5,857개 행을 읽기 전용으로 조회해 새 프로젝트에 복사한다. 기존 UUID와 원문 필드를 보존하고 원문 해시로 동일성을 검증한다. 만나앱의 기존 FastEmbed 벡터는 복사하지 않는다.
 
 ```text
-page
-paragraph_index
-bible_references
-themes
-embedding_model
-embedding_revision
-embedding_version
+id uuid PK
+book text NOT NULL
+chapter integer NOT NULL
+title text NOT NULL
+chunk_index integer NOT NULL
+content text NOT NULL
+content_hash text NOT NULL
+source_created_at timestamptz
+imported_at timestamptz
 ```
 
-새 임베딩 모델을 적용할 때 모든 `sop_chunks`를 같은 모델과 전처리 규칙으로 재임베딩한다.
+원장 유니크:
+
+```text
+book + chapter + chunk_index
+```
+
+## 예언의 신 버전 벡터 `sop_chunk_embeddings`
+
+원문과 벡터를 분리해 새 모델을 도입할 때 기존 버전을 보존할 수 있게 한다.
+
+```text
+id uuid PK
+chunk_id uuid NOT NULL FK -> sop_chunks.id
+embedding_version integer NOT NULL
+embedding vector(384) NOT NULL
+embedding_model text NOT NULL
+embedding_revision text NOT NULL
+embedding_dtype text NOT NULL
+preprocessing text NOT NULL
+created_at timestamptz NOT NULL
+```
+
+원장 유니크:
+
+```text
+chunk_id + embedding_version
+```
+
+Sprint 3에서는 `Xenova/multilingual-e5-small`, 고정 revision, q8, mean pooling, normalize, `passage:` 전처리로 버전 1을 생성했다. 검색 함수 `match_sop_chunks`는 요청된 버전의 벡터만 조회한다.
+
+## Sprint 4 검색 함수
+
+```text
+match_knowledge_chunks(vector(384), user_id, threshold, count, embedding_version)
+match_sop_chunks(vector(384), threshold, count, embedding_version)
+search_sop_chunks_text(query_terms[], count)
+```
+
+의미 검색 함수는 요청된 임베딩 버전만 사용한다. 옵시디언 함수는 `user_id`와 삭제 상태를 함께 확인하며, 예언의 신 텍스트 함수는 실제 책·제목·본문에 포함된 검색어 수를 반환한다.
 
 ## `family_worship_sermons`
 
@@ -277,7 +314,8 @@ conflict_backup
 
 ## 마이그레이션 원칙
 
-- 기존 만나앱 테이블을 파괴적으로 변경하지 않는다.
+- 만나앱 프로젝트는 읽기 원본으로 취급하고 테이블을 변경하지 않는다.
+- 새 프로젝트로 복사할 때 원본·대상 행 수와 주요 null 수를 비교한다.
 - 새 마이그레이션은 순번과 목적을 명확히 기록한다.
 - 벡터 차원 변경은 컬럼 즉시 교체보다 새 컬럼 또는 재생성 절차를 우선 검토한다.
 - 마이그레이션 전 행 수, null 수, 벡터 차원과 백업 방법을 기록한다.

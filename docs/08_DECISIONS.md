@@ -17,24 +17,24 @@
 재검토 조건
 ```
 
-## D-001 — 기존 Supabase 재사용
+## D-001 — 앱 전용 Supabase 프로젝트 사용
 
 날짜: 2026-07-17  
 상태: Accepted
 
 ### 맥락
 
-기존 만나앱에 Supabase Auth, 예언의 신 데이터와 검색 기반이 있다.
+기존 만나앱에 Supabase Auth와 예언의 신 데이터가 있지만, 새 앱의 인증·원문·설교 데이터를 같은 프로젝트에 추가하면 배포와 RLS 변경이 서로 영향을 줄 수 있다.
 
 ### 결정
 
-새 프로젝트는 기존 Supabase 프로젝트를 공유하고 새 테이블을 추가한다. 예언의 신 원문을 별도 복제하지 않는다.
+새 앱은 전용 Supabase 프로젝트를 사용한다. 만나앱의 `sop_chunks` 5,857개만 원본을 보존한 채 새 프로젝트로 검증 복사한다.
 
 ### 영향
 
-- 기존 데이터와 마이그레이션을 먼저 확인해야 한다.
-- 파괴적 스키마 변경을 피해야 한다.
-- 기존 앱과 새 앱의 RLS 정책을 함께 고려해야 한다.
+- 만나앱 스키마와 RLS를 새 앱 개발로부터 격리한다.
+- `sop_chunks` 이전 스크립트와 원본·대상 행 수 검증이 필요하다.
+- 이전이 끝날 때까지 만나앱 프로젝트는 읽기 원본으로만 사용한다.
 
 ## D-002 — 모든 옵시디언 자료 활용 가능
 
@@ -132,13 +132,13 @@ Sprint 0 Spike에서 384차원 생성, Windows Node.js 실행, 캐시 후 약 0.
 
 ### 결정
 
-기존 `embedding`을 즉시 덮어쓰지 않는다. 새 임베딩 컬럼 또는 버전 테이블에 E5 벡터를 생성하고 검색 품질과 행 수를 검증한 뒤 검색 RPC를 전환한다. 전환이 안정화될 때까지 기존 벡터를 보존한다.
+만나앱의 기존 `embedding`은 변경하지 않는다. `sop_chunks` 원본을 새 프로젝트로 복사한 뒤, 새 임베딩 컬럼 또는 버전 테이블에 E5 벡터를 생성하고 검색 품질과 행 수를 검증해 새 앱의 검색 RPC를 연결한다.
 
 ### 영향
 
-- 운영 데이터 롤백이 가능하다.
-- 재임베딩 중에도 기존 만나앱 검색을 유지할 수 있다.
-- 임시로 두 벡터 세트를 저장할 DB 용량이 필요하다.
+- 만나앱 운영 데이터와 검색은 이전·재임베딩의 영향을 받지 않는다.
+- 새 프로젝트에서 복사와 재임베딩을 독립적으로 재시도할 수 있다.
+- 새 프로젝트에 원본 벡터와 E5 벡터를 함께 저장할 DB 용량이 필요하다.
 
 ## D-007 — GetBible 한국어 판본
 
@@ -152,3 +152,60 @@ Sprint 0 Spike에서 384차원 생성, Windows Node.js 실행, 캐시 후 약 0.
 ### 결정
 
 MVP에서는 기존 GetBible `korean` API를 사용하고 화면에는 `개역성경(1952/1961, GetBible)`처럼 출처가 드러나는 표기를 사용한다. 향후 다른 번역본을 추가할 때는 별도 이용 조건을 확인한다.
+
+## D-008 — Claude Sonnet 5로 모델 통일
+
+날짜: 2026-07-18
+상태: Accepted
+
+### 맥락
+
+문서 구조화와 최종 설교 생성에 서로 다른 모델을 사용할 수 있으나, 초기 MVP에서는 품질·비용·프롬프트 재현성을 단순하게 관리할 필요가 있다.
+
+### 결정
+
+문서 구조화와 최종 설교 생성 모두 `claude-sonnet-5`를 사용한다. 환경변수는 역할별로 분리해 향후 독립 변경 가능하게 유지한다.
+
+```text
+ANTHROPIC_ANALYSIS_MODEL=claude-sonnet-5
+ANTHROPIC_MODEL=claude-sonnet-5
+```
+
+### 영향
+
+- Sprint 3의 구조화 결과에 실제 사용 모델과 프롬프트 버전을 기록한다.
+- 최종 설교 생성 모델도 같은 모델을 기본값으로 사용한다.
+- 유료 호출 전 파서·스키마·한 문서 시험을 먼저 검증한다.
+
+## D-009 — Claude Code 구독으로 모든 AI 작업 실행
+
+날짜: 2026-07-18
+상태: Accepted
+
+### 맥락
+
+Anthropic API 키를 직접 사용하면 토큰별 API 비용이 발생한다. 사용자는 Claude.ai Pro 구독을 가지고 있으며 문서 분석, 연구 종합, 설교 생성 등 모든 AI 작업을 구독 범위에서 실행하기로 했다.
+
+### 결정
+
+앱의 모든 Claude 호출은 Windows에 로그인된 Claude Code CLI의 비대화형 print mode를 사용한다.
+
+```text
+provider: claude-code-subscription
+command mode: claude -p
+output: --output-format json --json-schema
+model: claude-sonnet-5
+session persistence: disabled
+built-in tools: disabled for pure generation
+MCP: disabled for pure generation
+```
+
+앱은 Anthropic SDK와 `ANTHROPIC_API_KEY`를 사용하지 않는다. CLI 자식 프로세스에서도 API 키, 커스텀 API URL과 Bedrock·Vertex·Foundry 전환 변수를 제거해 Claude.ai 로그인만 사용하게 한다.
+
+### 영향
+
+- Claude Code CLI 설치와 Claude.ai Pro/Max 로그인이 로컬 실행의 필수 조건이다.
+- 구독 한도에 도달하면 작업이 실패할 수 있으므로 오류와 재시도 상태를 화면에 표시해야 한다.
+- `--json-schema` 결과를 기존 원문 근거 검증기에 다시 통과시킨다.
+- 향후 Vercel 단독 서버에서는 사용자의 로컬 구독 로그인을 사용할 수 없다. 웹 UI로 분리할 경우 Windows Local Companion이 AI 작업을 수행한다.
+- Sprint 3에서 이미 생성한 API 기반 구조화 데이터는 보존하고 `analysis_provider = anthropic-api`로 표시한다. 이후 새 분석과 재분석은 `claude-code-subscription`으로 기록한다.
