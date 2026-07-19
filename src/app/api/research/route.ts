@@ -7,7 +7,7 @@ import type { ResearchRequest } from '@/lib/research/types'
 import { createAdminClient } from '@/lib/supabase/admin'
 
 export const runtime = 'nodejs'
-export const maxDuration = 600
+export const maxDuration = 300
 
 function selectedIds(value: unknown, prefix: 'K' | 'S', field: string) {
   if (value === undefined) return undefined
