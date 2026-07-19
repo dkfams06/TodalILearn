@@ -1,6 +1,6 @@
 import 'server-only'
 
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 export type ObsidianSyncSummary = {
   active: number
@@ -10,7 +10,7 @@ export type ObsidianSyncSummary = {
 }
 
 export async function getObsidianSyncSummary(userId: string, vaultId: string) {
-  const supabase = await createClient()
+  const supabase = createAdminClient()
   const { data, error } = await supabase
     .from('obsidian_sources')
     .select('source_deleted,sync_status,last_synced_at')

@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from 'react'
 
+import { getResponseError, readJsonResponse } from '@/lib/http/client'
 import type {
   ResearchBundle,
   ResearchKnowledgeSource,
@@ -101,9 +102,9 @@ export function ResearchPanel() {
           } : {}),
         }),
       })
-      const body = await response.json() as ResearchBundle | { error?: string }
+      const body = await readJsonResponse<ResearchBundle | { error?: string }>(response)
       if (!response.ok) {
-        throw new Error('error' in body && body.error ? body.error : '연구 묶음을 만들지 못했습니다.')
+        throw new Error(getResponseError(body, '연구 묶음을 만들지 못했습니다.'))
       }
       const bundle = body as ResearchBundle
       setResult(bundle)

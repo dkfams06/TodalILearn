@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from 'react'
 
+import { getResponseError, readJsonResponse } from '@/lib/http/client'
 import type {
   HybridSearchResponse,
   KnowledgeSearchResult,
@@ -91,9 +92,9 @@ export function SearchPanel() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query }),
       })
-      const body = await response.json() as HybridSearchResponse | { error?: string }
+      const body = await readJsonResponse<HybridSearchResponse | { error?: string }>(response)
       if (!response.ok) {
-        throw new Error('error' in body && body.error ? body.error : '검색하지 못했습니다.')
+        throw new Error(getResponseError(body, '검색하지 못했습니다.'))
       }
       setResult(body as HybridSearchResponse)
     } catch (searchError) {
@@ -161,4 +162,3 @@ export function SearchPanel() {
     </article>
   )
 }
-

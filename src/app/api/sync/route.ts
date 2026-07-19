@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server'
 import { getCurrentUser } from '@/lib/auth/session'
 import { readLocalSettings } from '@/lib/local-settings'
 import { syncObsidianSources } from '@/lib/obsidian/sync-server'
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 export const runtime = 'nodejs'
 
@@ -15,7 +15,7 @@ export async function POST() {
 
   try {
     const settings = await readLocalSettings()
-    const supabase = await createClient()
+    const supabase = createAdminClient()
     const result = await syncObsidianSources({
       userId: user.id,
       settings,

@@ -1,34 +1,44 @@
 import { NextResponse } from 'next/server'
 
-import { getCurrentUser } from '@/lib/auth/session'
 import {
+  autoDetectLocalSettings,
+  LocalSettingsUnavailableError,
   readLocalSettings,
   writeLocalSettings,
   type LocalSettings,
 } from '@/lib/local-settings'
 
-export async function GET() {
-  if (!(await getCurrentUser())) {
-    return NextResponse.json({ error: '인증이 필요합니다.' }, { status: 401 })
-  }
+export const runtime = 'nodejs'
 
-  return NextResponse.json(await readLocalSettings())
+function settingsError(error: unknown) {
+  const message = error instanceof Error ? error.message : '로컬 설정을 처리하지 못했습니다.'
+  const status = error instanceof LocalSettingsUnavailableError ? 409 : 400
+  return NextResponse.json({ error: message }, { status })
+}
+
+export async function GET() {
+  try {
+    return NextResponse.json(await readLocalSettings())
+  } catch (error) {
+    return settingsError(error)
+  }
 }
 
 export async function PUT(request: Request) {
-  if (!(await getCurrentUser())) {
-    return NextResponse.json({ error: '인증이 필요합니다.' }, { status: 401 })
-  }
-
   try {
     const settings = (await request.json()) as LocalSettings
     await writeLocalSettings(settings)
-    return NextResponse.json({ ok: true })
-  } catch {
-    return NextResponse.json(
-      { error: '로컬 설정을 저장하지 못했습니다.' },
-      { status: 400 },
-    )
+    return NextResponse.json({ ok: true, settings: await readLocalSettings() })
+  } catch (error) {
+    return settingsError(error)
   }
 }
 
+export async function POST() {
+  try {
+    const settings = await autoDetectLocalSettings()
+    return NextResponse.json({ ok: true, settings })
+  } catch (error) {
+    return settingsError(error)
+  }
+}

@@ -233,3 +233,25 @@ Sprint 6에 앞서 Sprint 5.5를 추가해 장치 등록, 작업 큐, 연구 작
 - Companion이 오프라인이면 웹이 작업을 직접 실행하지 않고 대기·오류 상태를 명확히 표시한다.
 - 장치 토큰은 범위를 제한하고 서버에는 해시만 저장하며 사용자가 폐기할 수 있게 한다.
 - 상세 계약은 `docs/09_MULTI_PC_LOCAL_COMPANION.md`를 따른다.
+
+## D-011 — 개인용 무로그인과 PC별 경로 자동 탐지
+
+날짜: 2026-07-19
+상태: Accepted
+
+### 맥락
+
+이 앱은 한 명만 사용하므로 PC마다 Supabase 로그인을 반복하는 비용이 크다. Windows 사용자 이름이 달라지면 `.env.local`에 복사한 절대경로가 깨지고, Vercel 서버는 어떤 Windows 경로도 직접 저장할 수 없다.
+
+### 결정
+
+앱의 인터랙티브 로그인 화면을 제거하고 서버가 Supabase Auth의 유일한 사용자를 개인용 소유자로 확인한다. 사용자가 두 명 이상이면 `APP_OWNER_USER_ID`를 필수로 요구한다. 모든 DB 접근은 서버의 개인용 데이터 계층을 통하며 service role key는 브라우저에 노출하지 않는다.
+
+Windows 설정은 `%LOCALAPPDATA%\FamilyWorshipSermonAI\config.json`에 저장한다. 저장된 경로가 없거나 현재 PC에서 존재하지 않으면 환경변수, Obsidian Vault 설정, 표준 Documents 경로 순서로 자동 탐지한다. Vercel에서는 로컬 경로 저장을 시도하지 않고 Companion이 필요하다는 명시적 오류를 반환한다.
+
+### 영향
+
+- `/login`은 홈으로 이동하고 로그아웃 UI를 제거한다.
+- 공개 Vercel URL을 아는 사람도 화면에 접근할 수 있으므로 개인 배포 URL을 외부에 공유하지 않는다.
+- Vercel에서 실제 파일 읽기·쓰기는 여전히 Sprint 5.5 Companion이 온라인일 때만 가능하다.
+- 다른 PC의 절대경로를 복사하지 않고 각 PC가 자신의 Vault를 탐지한다.

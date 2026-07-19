@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 
+import { getResponseError, readJsonResponse } from '@/lib/http/client'
 import type { LocalSettings } from '@/lib/local-settings'
 import type { SyncResult } from '@/lib/obsidian/sync-server'
 import type { ObsidianSyncSummary } from '@/lib/obsidian/status'
@@ -26,9 +27,9 @@ export function SyncPanel({
 
     try {
       const response = await fetch('/api/sync', { method: 'POST' })
-      const body = await response.json() as SyncResult | { error?: string }
+      const body = await readJsonResponse<SyncResult | { error?: string }>(response)
       if (!response.ok) {
-        throw new Error('error' in body && body.error ? body.error : '동기화하지 못했습니다.')
+        throw new Error(getResponseError(body, '동기화하지 못했습니다.'))
       }
       setResult(body as SyncResult)
       router.refresh()

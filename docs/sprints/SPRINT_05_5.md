@@ -18,6 +18,8 @@ Vercel 화면에서 만든 성경연구 작업을 사용자가 선택한 Windows
 8. 장치 선택, 온라인 상태, 작업 진행·실패 UI
 9. JSON이 아닌 서버 오류 응답의 안전한 처리
 10. Windows 경로와 서버 환경변수 경계 검증
+11. 단일 사용자 무로그인 모드와 Supabase 고정 사용자 확인
+12. Obsidian Vault·PC별 입출력 경로 자동 탐지
 
 ## 범위 밖
 
@@ -37,7 +39,7 @@ Vercel 화면에서 만든 성경연구 작업을 사용자가 선택한 Windows
 
 ### 5.5-B — 로컬 Companion
 
-- PC 설정 저장과 경로 검증을 구현한다.
+- `%LOCALAPPDATA%` PC 설정 저장, 기존 설정 이전, Obsidian Vault 자동 탐지를 구현한다.
 - 장치 등록, heartbeat, claim loop를 구현한다.
 - 기존 research 서비스를 Companion에서 호출한다.
 - 정상 종료와 실행 중 작업 복구를 구현한다.
@@ -70,6 +72,8 @@ Vercel 화면에서 만든 성경연구 작업을 사용자가 선택한 Windows
 - [ ] 로컬 직접 모드의 기존 기능이 회귀하지 않는다.
 - [ ] lint, typecheck, 단위 테스트, production build가 통과한다.
 - [ ] 실제 두 PC 수동 검증 결과를 이 문서에 기록한다.
+- [ ] 로그인 화면 없이 단일 Supabase 사용자가 일관되게 사용된다.
+- [ ] 다른 사용자 폴더명을 가진 PC에서 입출력 경로가 자동 설정된다.
 
 ## 롤백
 
