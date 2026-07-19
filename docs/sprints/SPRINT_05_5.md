@@ -61,19 +61,31 @@ Vercel 화면에서 만든 성경연구 작업을 사용자가 선택한 Windows
 
 ## 완료 기준
 
-- [ ] 두 PC가 별도 장치로 등록되고 온라인 상태가 정확히 표시된다.
-- [ ] 절대경로는 해당 PC의 로컬 설정에서만 확인된다.
-- [ ] Vercel 연구 요청이 선택한 PC에서 완료된다.
-- [ ] Claude 실행 공급자는 `claude-code-subscription`으로 기록된다.
-- [ ] 동일 작업 중복 실행이 0건이다.
-- [ ] Companion 중단 후 작업이 손실되지 않는다.
+- [ ] 두 PC가 별도 장치로 등록되고 온라인 상태가 정확히 표시된다. (현재 1대 검증)
+- [x] 절대경로는 해당 PC의 로컬 설정에서만 확인된다.
+- [x] Vercel 연구 요청이 선택한 PC에서 완료된다.
+- [x] Claude 실행 공급자는 `claude-code-subscription`으로 기록된다.
+- [x] 동일 작업 중복 실행이 0건이다.
+- [x] Companion 중단 후 작업이 손실되지 않는다.
 - [ ] 장치 토큰 폐기 후 접근이 거부된다.
-- [ ] Vercel은 로컬 경로, `claude` 실행 파일, Anthropic API 키 없이 빌드·동작한다.
-- [ ] 로컬 직접 모드의 기존 기능이 회귀하지 않는다.
-- [ ] lint, typecheck, 단위 테스트, production build가 통과한다.
+- [x] Vercel은 로컬 경로, `claude` 실행 파일, Anthropic API 키 없이 빌드·동작한다.
+- [x] 로컬 직접 모드의 기존 기능이 회귀하지 않는다.
+- [x] lint, typecheck, 단위 테스트, production build가 통과한다.
 - [ ] 실제 두 PC 수동 검증 결과를 이 문서에 기록한다.
-- [ ] 로그인 화면 없이 단일 Supabase 사용자가 일관되게 사용된다.
-- [ ] 다른 사용자 폴더명을 가진 PC에서 입출력 경로가 자동 설정된다.
+- [x] 로그인 화면 없이 단일 Supabase 사용자가 일관되게 사용된다.
+- [ ] 다른 사용자 폴더명을 가진 PC에서 입출력 경로가 자동 설정된다. (현재 PC 자동 탐지 검증)
+
+## 구현 기록 — 2026-07-19
+
+- 앱 로그인과 로그아웃 UI를 제거하고 Supabase Auth의 유일한 사용자를 서버에서 자동 선택했다.
+- 설정을 `%LOCALAPPDATA%\FamilyWorshipSermonAI\config.json`에 저장하고 환경변수·Obsidian 설정·표준 Documents 경로 순서로 Vault를 자동 탐지한다.
+- 현재 PC에서 입력 `05 Raw/bible`, 출력 `02 category/Bible/sermon` 경로의 존재, 수동 저장, 자동 저장을 확인했다.
+- `local_devices`, `local_jobs`, `claim_local_job` 비파괴적 마이그레이션을 운영 Supabase에 적용했다.
+- Vercel과 같은 `APP_EXECUTION_MODE=web` production 서버에서 현재 PC가 온라인으로 표시됐다.
+- 웹 연구 작업 `cdca569f-6e98-4e7a-ba08-f83f78651e69`을 큐에 넣어 Windows Companion의 `claude -p` 결과가 `succeeded`로 반환되는 것을 확인했다.
+- Companion 강제 종료로 남은 `running` 작업이 재시작 후 stale heartbeat 복구를 거쳐 완료되는 것을 확인했다.
+- 테스트 23개, typecheck, lint, 경고 없는 Next.js production build를 통과했다.
+- 현재 Companion은 기능 검증을 위해 로컬 `.env.local`의 service role을 사용한다. Sprint 완료 전 범위 제한 장치 토큰과 폐기 흐름으로 교체해야 한다.
 
 ## 롤백
 
@@ -83,4 +95,4 @@ Vercel 화면에서 만든 성경연구 작업을 사용자가 선택한 Windows
 
 ## Sprint 종료 판정
 
-아직 시작 전이다. 완료 기준을 모두 통과하고 사용자 확인을 받은 뒤 Sprint 6으로 진입한다.
+핵심 단일 PC 종단 흐름은 동작한다. 두 번째 PC 자동 경로 검증과 범위 제한 장치 토큰·폐기 흐름이 남아 있으므로 Sprint 6 진입 판정은 아직 보류한다.

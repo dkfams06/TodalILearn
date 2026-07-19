@@ -4,6 +4,8 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   outputFileTracingExcludes: {
     '/api/research': ['./next.config.ts'],
+    '/api/devices': ['./next.config.ts'],
+    '/api/jobs/[id]': ['./next.config.ts'],
     '/api/settings': ['./next.config.ts'],
     '/api/sync': ['./next.config.ts'],
   },

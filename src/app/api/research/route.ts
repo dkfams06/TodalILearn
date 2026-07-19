@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 
 import { getCurrentUser } from '@/lib/auth/session'
 import { getServerEnv } from '@/lib/env/server'
+import { getExecutionMode } from '@/lib/execution/mode'
 import { createResearchBundle } from '@/lib/research/research'
 import type { ResearchRequest } from '@/lib/research/types'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -25,7 +26,7 @@ export async function POST(request: Request) {
   const user = await getCurrentUser()
   if (!user) return NextResponse.json({ error: '인증이 필요합니다.' }, { status: 401 })
 
-  let body: ResearchRequest
+  let body: ResearchRequest & { deviceId?: unknown }
   try {
     body = await request.json() as ResearchRequest
   } catch {
@@ -45,6 +46,43 @@ export async function POST(request: Request) {
       'selectedKnowledgeIds',
     )
     const selectedSopIds = selectedIds(body.selectedSopIds, 'S', 'selectedSopIds')
+    if (getExecutionMode() === 'web') {
+      if (typeof body.deviceId !== 'string') {
+        throw new Error('온라인 Windows PC를 선택해 주세요.')
+      }
+      const database = createAdminClient()
+      const onlineAfter = new Date(Date.now() - 45_000).toISOString()
+      const { data: device, error: deviceError } = await database
+        .from('local_devices')
+        .select('id')
+        .eq('id', body.deviceId)
+        .eq('user_id', user.id)
+        .is('revoked_at', null)
+        .gte('last_seen_at', onlineAfter)
+        .maybeSingle()
+      if (deviceError) throw new Error(deviceError.message)
+      if (!device) throw new Error('선택한 PC가 오프라인입니다. Companion을 실행해 주세요.')
+
+      const payload: ResearchRequest = {
+        query: body.query,
+        personalContext,
+        ...(selectedKnowledgeIds ? { selectedKnowledgeIds } : {}),
+        ...(selectedSopIds ? { selectedSopIds } : {}),
+      }
+      const { data: job, error: jobError } = await database
+        .from('local_jobs')
+        .insert({
+          user_id: user.id,
+          device_id: device.id,
+          job_type: 'research',
+          payload,
+        })
+        .select('id,status')
+        .single()
+      if (jobError) throw new Error(jobError.message)
+      return NextResponse.json({ jobId: job.id, status: job.status }, { status: 202 })
+    }
+
     const env = getServerEnv()
     const result = await createResearchBundle({
       database: createAdminClient(),

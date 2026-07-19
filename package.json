@@ -6,6 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "companion": "tsx scripts/run-local-companion.ts",
+    "companion:verify": "tsx scripts/verify-local-companion.ts",
     "test": "tsx --test tests/**/*.test.ts",
     "test:sync:integration": "tsx scripts/verify-obsidian-sync.ts",
     "sync:obsidian": "tsx scripts/run-obsidian-sync.ts",
@@ -30,6 +32,7 @@
     "db:migrate:sprint3": "node scripts/apply-migration.mjs supabase/migrations/003_knowledge_processing_and_sop.sql",
     "db:migrate:claude-subscription": "node scripts/apply-migration.mjs supabase/migrations/004_claude_subscription_provider.sql",
     "db:migrate:sprint4": "node scripts/apply-migration.mjs supabase/migrations/005_hybrid_search.sql",
+    "db:migrate:sprint5-5": "node scripts/apply-migration.mjs supabase/migrations/006_local_companion_jobs.sql",
     "db:verify": "node scripts/verify-schema.mjs"
   },
   "dependencies": {

@@ -1,7 +1,9 @@
 'use client'
 
-import { FormEvent, useState } from 'react'
+import { FormEvent, useEffect, useState } from 'react'
 
+import type { ExecutionMode } from '@/lib/execution/mode'
+import type { CompanionDevice, ResearchJobResponse } from '@/lib/execution/types'
 import { getResponseError, readJsonResponse } from '@/lib/http/client'
 import type {
   ResearchBundle,
@@ -85,6 +87,53 @@ export function ResearchPanel() {
     knowledge: new Set(), sop: new Set(),
   })
   const [error, setError] = useState<string | null>(null)
+  const [executionMode, setExecutionMode] = useState<ExecutionMode>('local')
+  const [devices, setDevices] = useState<CompanionDevice[]>([])
+  const [deviceId, setDeviceId] = useState('')
+
+  useEffect(() => {
+    let cancelled = false
+    async function loadDevices() {
+      try {
+        const response = await fetch('/api/devices')
+        const body = await readJsonResponse<{
+          mode: ExecutionMode
+          devices: CompanionDevice[]
+          error?: string
+        }>(response)
+        if (!response.ok) throw new Error(getResponseError(body, 'PC 상태를 확인하지 못했습니다.'))
+        if (cancelled) return
+        setExecutionMode(body.mode)
+        setDevices(body.devices)
+        const online = body.devices.find((device) => device.online)
+        if (online) setDeviceId((current) => current || online.id)
+      } catch (deviceError) {
+        if (!cancelled) setError(deviceError instanceof Error ? deviceError.message : 'PC 상태를 확인하지 못했습니다.')
+      }
+    }
+    void loadDevices()
+    const interval = window.setInterval(() => void loadDevices(), 15_000)
+    return () => {
+      cancelled = true
+      window.clearInterval(interval)
+    }
+  }, [])
+
+  async function waitForResearchJob(jobId: string) {
+    for (let attempt = 0; attempt < 150; attempt += 1) {
+      await new Promise((resolve) => window.setTimeout(resolve, 2_000))
+      const response = await fetch(`/api/jobs/${jobId}`)
+      const job = await readJsonResponse<ResearchJobResponse | { error?: string }>(response)
+      if (!response.ok || !('status' in job)) {
+        throw new Error(getResponseError(job, '작업 상태를 확인하지 못했습니다.'))
+      }
+      if (job.status === 'succeeded' && job.result) return job.result
+      if (job.status === 'failed' || job.status === 'cancelled') {
+        throw new Error(job.error || 'Windows PC에서 연구 작업을 완료하지 못했습니다.')
+      }
+    }
+    throw new Error('연구 작업 대기 시간이 초과되었습니다.')
+  }
 
   async function requestResearch(includeSelection: boolean) {
     setIsWorking(true)
@@ -100,13 +149,16 @@ export function ResearchPanel() {
             selectedKnowledgeIds: [...selection.knowledge],
             selectedSopIds: [...selection.sop],
           } : {}),
+          ...(executionMode === 'web' ? { deviceId } : {}),
         }),
       })
-      const body = await readJsonResponse<ResearchBundle | { error?: string }>(response)
+      const body = await readJsonResponse<ResearchBundle | ResearchJobResponse | { error?: string }>(response)
       if (!response.ok) {
         throw new Error(getResponseError(body, '연구 묶음을 만들지 못했습니다.'))
       }
-      const bundle = body as ResearchBundle
+      const bundle = response.status === 202 && 'jobId' in body
+        ? await waitForResearchJob(body.jobId)
+        : body as ResearchBundle
       setResult(bundle)
       setSelection({
         knowledge: new Set(bundle.knowledgeSources.filter((source) => source.selected).map((source) => source.id)),
@@ -144,6 +196,19 @@ export function ResearchPanel() {
       </div>
 
       <form className="research-form" onSubmit={submit}>
+        {executionMode === 'web' ? (
+          <label>
+            연구를 실행할 Windows PC
+            <select onChange={(event) => setDeviceId(event.target.value)} value={deviceId}>
+              <option value="">온라인 PC를 선택하세요</option>
+              {devices.map((device) => (
+                <option disabled={!device.online} key={device.id} value={device.id}>
+                  {device.deviceName} · {device.online ? '온라인' : '오프라인'}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
         <label htmlFor="research-query">연구할 질문이나 본문</label>
         <input
           id="research-query"
@@ -163,7 +228,10 @@ export function ResearchPanel() {
           value={personalContext}
         />
         <div className="form-actions">
-          <button disabled={isWorking || query.trim().length < 2} type="submit">
+          <button
+            disabled={isWorking || query.trim().length < 2 || (executionMode === 'web' && !deviceId)}
+            type="submit"
+          >
             {isWorking ? '연구 중…' : '연구 묶음 만들기'}
           </button>
           <span className="muted">Claude Code 구독 호출은 보통 1~4분이 걸립니다.</span>
