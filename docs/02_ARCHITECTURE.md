@@ -170,17 +170,22 @@ Claude는 성경 직접 인용문을 생성하지 않는다. 대표·관련 `B*`
 - AI가 기억으로 작성한 성경 본문을 그대로 신뢰하지 않는다.
 - API 실패 시 참조만 표시하거나 재시도하며 본문을 창작하지 않는다.
 
-## 이후 분리 가능한 구조
+## Vercel과 멀티 PC 실행 구조
 
 ```text
 Vercel Next.js Web
-        ↕ Supabase
+├─ 로그인·화면
+└─ 작업 생성·상태 조회
+        ↕ Supabase 작업 큐
 Windows Local Companion
 ├─ Obsidian 파일 접근
-└─ 로컬 임베딩 API
+├─ 로컬 임베딩
+└─ Claude Code `claude -p`
 ```
 
-이 분리는 MVP 품질 검증 후 결정한다. 초기 코드에서도 파일 접근, 임베딩, DB 접근 인터페이스를 분리해 이후 이동 가능하게 한다.
+Sprint 5 완료 후 실제 Vercel 제약을 확인했으므로 Sprint 5.5에서 이 분리를 구현한다. Vercel은 Windows 절대경로와 로컬 Claude 로그인을 사용할 수 없으며, Companion은 외부 인바운드 포트 없이 작업 큐를 가져간다. PC별 절대경로는 `%LOCALAPPDATA%` 설정에만 저장하고 서버에는 장치·Vault ID와 상대경로만 저장한다.
+
+상세 계약과 보안 경계는 [멀티 PC Local Companion 설계](./09_MULTI_PC_LOCAL_COMPANION.md)를 따른다.
 
 ## 보안과 개인정보
 
@@ -191,5 +196,5 @@ Windows Local Companion
 
 ## 미확정 사항
 
-- 로컬 앱을 `npm run dev` 수준으로 사용할지, 이후 Electron/Tauri로 패키징할지
+- Sprint 10에서 Companion을 Electron/Tauri 또는 Windows 서비스로 패키징할지
 - Claude Code 구독 사용량 제한에 도달했을 때 사용자에게 표시할 재시도 UX

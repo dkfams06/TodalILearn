@@ -203,6 +203,35 @@
 - 자료 0개 선택 재구성에서는 성경 근거만 사용했다.
 - 상세 결과는 `docs/sprints/SPRINT_05.md`에 기록했다.
 
+## Sprint 5.5 — 멀티 PC 실행 기반
+
+### 목표
+
+Vercel 화면과 사용자의 Windows PC를 안전한 작업 큐로 연결한다. 각 PC는 자신의 Obsidian 절대경로, 로컬 E5, Claude Code 구독 로그인을 사용한다.
+
+### 작업
+
+- 장치·작업 큐 데이터 계약과 RLS
+- 일회용 연결 코드와 장치 토큰 폐기
+- `%LOCALAPPDATA%` 기반 PC별 설정
+- Companion heartbeat·원자적 claim·lease·재시도
+- `local|web` 실행 어댑터
+- Sprint 5 연구 작업의 큐 기반 종단 연결
+- 장치 선택과 온라인·진행·오류 UI
+- JSON이 아닌 서버 오류 응답의 안전한 처리
+
+### 완료 기준
+
+- 사용자 폴더명이 다른 두 PC가 같은 계정에 등록됨
+- 절대경로와 Claude 인증 정보가 해당 PC 밖으로 노출되지 않음
+- Vercel 연구 요청을 선택한 PC가 `claude -p`로 처리함
+- 동일 작업 중복 실행 0건
+- Companion 중단 시 작업 손실 0건
+- 장치 토큰 폐기 검증
+- 로컬 직접 모드 회귀 없음
+
+상세 구현 순서와 검증표는 `docs/sprints/SPRINT_05_5.md`, 실행 계약은 `docs/09_MULTI_PC_LOCAL_COMPANION.md`를 따른다. 완료 후에만 Sprint 6으로 진입한다.
+
 ## Sprint 6 — 출처가 있는 가정예배 설교 생성
 
 ### 목표

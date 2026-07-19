@@ -209,3 +209,27 @@ MCP: disabled for pure generation
 - `--json-schema` 결과를 기존 원문 근거 검증기에 다시 통과시킨다.
 - 향후 Vercel 단독 서버에서는 사용자의 로컬 구독 로그인을 사용할 수 없다. 웹 UI로 분리할 경우 Windows Local Companion이 AI 작업을 수행한다.
 - Sprint 3에서 이미 생성한 API 기반 구조화 데이터는 보존하고 `analysis_provider = anthropic-api`로 표시한다. 이후 새 분석과 재분석은 `claude-code-subscription`으로 기록한다.
+
+## D-010 — Vercel Web과 Windows Local Companion 분리
+
+날짜: 2026-07-19
+상태: Accepted
+
+### 맥락
+
+로컬 Next.js에서는 Obsidian 절대경로와 Claude Code 구독 로그인을 사용할 수 있지만 Vercel의 Linux 함수는 Windows 파일시스템과 각 PC의 Claude 로그인을 사용할 수 없다. PC마다 `C:\Users\EQR6\...`, `C:\Users\user\...`처럼 절대경로도 다르다.
+
+### 결정
+
+Vercel은 로그인·화면·작업 요청을 담당하고, 각 Windows PC의 Local Companion은 Obsidian 읽기·쓰기, E5, `claude -p`를 담당한다. 두 실행 환경은 Supabase 작업 큐로 연결한다. Companion은 아웃바운드 연결만 사용하고 PC별 절대경로는 `%LOCALAPPDATA%` 설정에만 저장한다.
+
+Sprint 6에 앞서 Sprint 5.5를 추가해 장치 등록, 작업 큐, 연구 작업의 종단 연결을 완성한다. 로컬 직접 모드는 개발과 복구 경로로 유지한다.
+
+### 영향
+
+- Vercel 환경변수에서 Windows 경로와 Claude/Anthropic 비밀값을 제거한다.
+- 같은 Vault의 파일 정체성은 절대경로가 아니라 `vault_id + normalized_relative_path`로 판단한다.
+- 설교 생성과 완성본 저장도 이후 같은 Companion 작업 계약을 사용한다.
+- Companion이 오프라인이면 웹이 작업을 직접 실행하지 않고 대기·오류 상태를 명확히 표시한다.
+- 장치 토큰은 범위를 제한하고 서버에는 해시만 저장하며 사용자가 폐기할 수 있게 한다.
+- 상세 계약은 `docs/09_MULTI_PC_LOCAL_COMPANION.md`를 따른다.

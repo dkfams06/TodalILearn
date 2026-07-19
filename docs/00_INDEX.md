@@ -23,6 +23,8 @@
 - `primary`, `supporting`, `limited`, `excluded` 같은 자료 우선등급은 사용하지 않는다.
 - `content_type` 같은 분류는 검색과 화면 표시를 돕는 메타데이터일 뿐, 자료 사용을 제한하지 않는다.
 - 초기 MVP는 Windows 로컬에서 Next.js 앱을 실행하는 local-first 구조로 검증한다.
+- Vercel 운영에서는 Local Companion이 각 PC의 Obsidian·E5·Claude Code 작업을 처리한다.
+- PC별 Windows 절대경로와 Claude 로그인 정보는 해당 PC의 로컬 설정에만 둔다.
 - 자동 폴더 감시와 양방향 충돌 처리는 검색·생성 품질 검증 후 구현한다.
 
 ## 문서 목록
@@ -35,6 +37,7 @@
 6. [전체 로드맵](./06_ROADMAP.md)
 7. [Sprint 실행계획](./07_SPRINT_PLAN.md)
 8. [의사결정 기록](./08_DECISIONS.md)
+9. [멀티 PC Local Companion 설계](./09_MULTI_PC_LOCAL_COMPANION.md)
 
 ## 문서 상태 표기
 

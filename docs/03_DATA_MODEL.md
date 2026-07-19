@@ -320,3 +320,53 @@ conflict_backup
 - 벡터 차원 변경은 컬럼 즉시 교체보다 새 컬럼 또는 재생성 절차를 우선 검토한다.
 - 마이그레이션 전 행 수, null 수, 벡터 차원과 백업 방법을 기록한다.
 - 실제 운영 DB 적용은 사용자 확인 후 진행한다.
+
+## 멀티 PC 실행 데이터
+
+Sprint 5.5에서 기존 도메인 테이블과 분리된 실행 제어 테이블을 추가한다.
+
+### `local_devices`
+
+```text
+id uuid PK
+user_id uuid NOT NULL
+device_name text NOT NULL
+vault_id text NOT NULL
+token_hash text NOT NULL
+companion_version text
+capabilities jsonb NOT NULL
+last_seen_at timestamptz
+revoked_at timestamptz
+created_at timestamptz
+updated_at timestamptz
+```
+
+Windows 절대경로와 Claude 인증 정보는 저장하지 않는다. 화면의 온라인 상태는 영구 boolean 값이 아니라 `last_seen_at`과 heartbeat 기준으로 계산한다.
+
+### `local_jobs`
+
+```text
+id uuid PK
+user_id uuid NOT NULL
+device_id uuid NOT NULL
+job_type text NOT NULL
+payload jsonb NOT NULL
+status text NOT NULL
+idempotency_key text NOT NULL
+lease_expires_at timestamptz
+heartbeat_at timestamptz
+attempt_count integer NOT NULL
+result jsonb
+error_code text
+error_message text
+created_at timestamptz
+claimed_at timestamptz
+completed_at timestamptz
+updated_at timestamptz
+```
+
+`payload`는 Vault ID, 상대경로, 문서·연구·설교 ID처럼 장치 간 이동 가능한 값만 허용한다. claim은 DB 함수 안에서 원자적으로 처리하고 `user_id + idempotency_key`를 중복 방지 기준으로 사용한다. 상세 상태 전이는 [멀티 PC Local Companion 설계](./09_MULTI_PC_LOCAL_COMPANION.md)를 따른다.
+
+### `device_pairing_codes`
+
+짧은 수명의 일회용 연결 코드 해시와 만료 시각만 저장한다. 평문 연결 코드와 발급된 장치 토큰은 DB에 저장하지 않는다. 사용 완료·만료 코드는 재사용할 수 없다.
