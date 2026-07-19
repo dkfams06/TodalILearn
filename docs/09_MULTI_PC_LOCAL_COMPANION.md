@@ -1,6 +1,8 @@
 # 멀티 PC Local Companion 설계
 
-상태: Approved (2026-07-19)
+상태: Superseded by D-012 / `10_MAIN_PC_EXECUTION.md` (2026-07-19)
+
+이 문서의 PC별 Companion과 장치 선택 설계는 더 이상 구현 기준이 아니다. 하나의 메인 PC만 Claude Code·E5·Obsidian 작업을 실행하며 다른 PC는 Vercel UI만 사용한다.
 
 ## 목적
 

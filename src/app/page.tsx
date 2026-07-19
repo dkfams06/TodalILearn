@@ -5,6 +5,7 @@ import { ResearchPanel } from '@/components/research-panel'
 import { SearchPanel } from '@/components/search-panel'
 import { SyncPanel } from '@/components/sync-panel'
 import { requireUser } from '@/lib/auth/session'
+import { getExecutionMode } from '@/lib/execution/mode'
 import { isLocalSettingsRuntime, readLocalSettings } from '@/lib/local-settings'
 import { getObsidianSyncSummary } from '@/lib/obsidian/status'
 import { getSystemStatus } from '@/lib/system-status'
@@ -12,6 +13,8 @@ import { getSystemStatus } from '@/lib/system-status'
 export default async function HomePage() {
   await connection()
   const user = await requireUser()
+  const localRuntime = isLocalSettingsRuntime()
+  const executionMode = getExecutionMode()
   const [settings, status] = await Promise.all([
     readLocalSettings(),
     getSystemStatus(),
@@ -31,7 +34,7 @@ export default async function HomePage() {
       <section className="grid">
         <ResearchPanel />
 
-        <SearchPanel />
+        {executionMode === 'local' ? <SearchPanel /> : null}
 
         <article className="card">
           <h2>연결 상태</h2>
@@ -58,16 +61,24 @@ export default async function HomePage() {
           {status.message ? <p className="error-message">{status.message}</p> : null}
         </article>
 
-        <SyncPanel settings={settings} summary={syncSummary} />
-
-        <article className="card wide">
-          <h2>이 PC의 옵시디언 설정</h2>
-          <p className="muted">절대경로는 이 Windows PC에서만 사용합니다.</p>
-          <SettingsForm
-            initialSettings={settings}
-            localRuntime={isLocalSettingsRuntime()}
-          />
-        </article>
+        {localRuntime ? (
+          <>
+            <SyncPanel settings={settings} summary={syncSummary} />
+            <article className="card wide">
+              <h2>메인 PC 옵시디언 설정</h2>
+              <p className="muted">Claude Code와 파일 작업은 이 PC에서만 실행합니다.</p>
+              <SettingsForm initialSettings={settings} localRuntime />
+            </article>
+          </>
+        ) : (
+          <article className="card wide">
+            <h2>메인 PC 실행 방식</h2>
+            <p className="muted">
+              로컬 경로·Claude Code·옵시디언 저장은 항상 켜진 메인 PC의 Companion이 자동 처리합니다.
+              이 브라우저에서는 별도 경로 설정이 필요 없습니다.
+            </p>
+          </article>
+        )}
       </section>
     </main>
   )

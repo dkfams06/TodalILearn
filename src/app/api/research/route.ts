@@ -26,7 +26,7 @@ export async function POST(request: Request) {
   const user = await getCurrentUser()
   if (!user) return NextResponse.json({ error: '인증이 필요합니다.' }, { status: 401 })
 
-  let body: ResearchRequest & { deviceId?: unknown }
+  let body: ResearchRequest
   try {
     body = await request.json() as ResearchRequest
   } catch {
@@ -47,21 +47,19 @@ export async function POST(request: Request) {
     )
     const selectedSopIds = selectedIds(body.selectedSopIds, 'S', 'selectedSopIds')
     if (getExecutionMode() === 'web') {
-      if (typeof body.deviceId !== 'string') {
-        throw new Error('온라인 Windows PC를 선택해 주세요.')
-      }
       const database = createAdminClient()
       const onlineAfter = new Date(Date.now() - 45_000).toISOString()
       const { data: device, error: deviceError } = await database
         .from('local_devices')
         .select('id')
-        .eq('id', body.deviceId)
         .eq('user_id', user.id)
         .is('revoked_at', null)
         .gte('last_seen_at', onlineAfter)
+        .order('last_seen_at', { ascending: false })
+        .limit(1)
         .maybeSingle()
       if (deviceError) throw new Error(deviceError.message)
-      if (!device) throw new Error('선택한 PC가 오프라인입니다. Companion을 실행해 주세요.')
+      if (!device) throw new Error('메인 PC가 오프라인입니다. Companion을 실행해 주세요.')
 
       const payload: ResearchRequest = {
         query: body.query,

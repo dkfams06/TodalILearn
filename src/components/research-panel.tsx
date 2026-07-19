@@ -88,8 +88,7 @@ export function ResearchPanel() {
   })
   const [error, setError] = useState<string | null>(null)
   const [executionMode, setExecutionMode] = useState<ExecutionMode>('local')
-  const [devices, setDevices] = useState<CompanionDevice[]>([])
-  const [deviceId, setDeviceId] = useState('')
+  const [mainDevice, setMainDevice] = useState<CompanionDevice | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -104,9 +103,7 @@ export function ResearchPanel() {
         if (!response.ok) throw new Error(getResponseError(body, 'PC 상태를 확인하지 못했습니다.'))
         if (cancelled) return
         setExecutionMode(body.mode)
-        setDevices(body.devices)
-        const online = body.devices.find((device) => device.online)
-        if (online) setDeviceId((current) => current || online.id)
+        setMainDevice(body.devices.find((device) => device.online) ?? null)
       } catch (deviceError) {
         if (!cancelled) setError(deviceError instanceof Error ? deviceError.message : 'PC 상태를 확인하지 못했습니다.')
       }
@@ -149,7 +146,6 @@ export function ResearchPanel() {
             selectedKnowledgeIds: [...selection.knowledge],
             selectedSopIds: [...selection.sop],
           } : {}),
-          ...(executionMode === 'web' ? { deviceId } : {}),
         }),
       })
       const body = await readJsonResponse<ResearchBundle | ResearchJobResponse | { error?: string }>(response)
@@ -197,17 +193,9 @@ export function ResearchPanel() {
 
       <form className="research-form" onSubmit={submit}>
         {executionMode === 'web' ? (
-          <label>
-            연구를 실행할 Windows PC
-            <select onChange={(event) => setDeviceId(event.target.value)} value={deviceId}>
-              <option value="">온라인 PC를 선택하세요</option>
-              {devices.map((device) => (
-                <option disabled={!device.online} key={device.id} value={device.id}>
-                  {device.deviceName} · {device.online ? '온라인' : '오프라인'}
-                </option>
-              ))}
-            </select>
-          </label>
+          <p className={mainDevice ? 'success-message' : 'error-message'}>
+            메인 PC · {mainDevice ? `${mainDevice.deviceName} 온라인` : '오프라인 — Companion을 실행해 주세요.'}
+          </p>
         ) : null}
         <label htmlFor="research-query">연구할 질문이나 본문</label>
         <input
@@ -229,7 +217,7 @@ export function ResearchPanel() {
         />
         <div className="form-actions">
           <button
-            disabled={isWorking || query.trim().length < 2 || (executionMode === 'web' && !deviceId)}
+            disabled={isWorking || query.trim().length < 2 || (executionMode === 'web' && !mainDevice)}
             type="submit"
           >
             {isWorking ? '연구 중…' : '연구 묶음 만들기'}

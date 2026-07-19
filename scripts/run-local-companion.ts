@@ -1,9 +1,26 @@
 import { loadEnvConfig } from '@next/env'
 import { createClient } from '@supabase/supabase-js'
+import { createServer, type Server } from 'node:net'
 
 loadEnvConfig(process.cwd())
 
+async function acquireSingleInstance(): Promise<Server> {
+  const server = createServer()
+  await new Promise<void>((resolve, reject) => {
+    server.once('error', (error: NodeJS.ErrnoException) => {
+      reject(
+        error.code === 'EADDRINUSE'
+          ? new Error('Local Companion이 이미 이 PC에서 실행 중입니다.')
+          : error,
+      )
+    })
+    server.listen(47_631, '127.0.0.1', resolve)
+  })
+  return server
+}
+
 async function main() {
+const singleInstance = await acquireSingleInstance()
 const { readLocalSettings } = await import('../src/lib/local-settings')
 const { createResearchBundle } = await import('../src/lib/research/research')
 
@@ -126,6 +143,7 @@ while (!stopping) {
 }
 
 console.log('Local Companion을 종료했습니다.')
+singleInstance.close()
 }
 
 void main().catch((error) => {

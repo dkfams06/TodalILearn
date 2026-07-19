@@ -170,7 +170,7 @@ Claude는 성경 직접 인용문을 생성하지 않는다. 대표·관련 `B*`
 - AI가 기억으로 작성한 성경 본문을 그대로 신뢰하지 않는다.
 - API 실패 시 참조만 표시하거나 재시도하며 본문을 창작하지 않는다.
 
-## Vercel과 멀티 PC 실행 구조
+## Vercel과 단일 메인 PC 실행 구조
 
 ```text
 Vercel Next.js Web
@@ -183,9 +183,9 @@ Windows Local Companion
 └─ Claude Code `claude -p`
 ```
 
-Sprint 5 완료 후 실제 Vercel 제약을 확인했으므로 Sprint 5.5에서 이 분리를 구현한다. Vercel은 Windows 절대경로와 로컬 Claude 로그인을 사용할 수 없으며, Companion은 외부 인바운드 포트 없이 작업 큐를 가져간다. PC별 절대경로는 `%LOCALAPPDATA%` 설정에만 저장하고 서버에는 장치·Vault ID와 상대경로만 저장한다.
+Sprint 5 완료 후 실제 Vercel 제약을 확인했으므로 Sprint 5.5에서 이 분리를 구현한다. Vercel은 Windows 절대경로와 로컬 Claude 로그인을 사용할 수 없으며, 항상 켜진 메인 PC의 Companion이 작업 큐를 가져간다. 다른 PC는 Vercel 웹만 사용한다.
 
-상세 계약과 보안 경계는 [멀티 PC Local Companion 설계](./09_MULTI_PC_LOCAL_COMPANION.md)를 따른다.
+상세 계약은 [단일 메인 PC 실행 설계](./10_MAIN_PC_EXECUTION.md)를 따른다.
 
 ## 보안과 개인정보
 

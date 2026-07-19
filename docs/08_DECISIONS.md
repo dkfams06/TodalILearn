@@ -255,3 +255,32 @@ Windows 설정은 `%LOCALAPPDATA%\FamilyWorshipSermonAI\config.json`에 저장�
 - 공개 Vercel URL을 아는 사람도 화면에 접근할 수 있으므로 개인 배포 URL을 외부에 공유하지 않는다.
 - Vercel에서 실제 파일 읽기·쓰기는 여전히 Sprint 5.5 Companion이 온라인일 때만 가능하다.
 - 다른 PC의 절대경로를 복사하지 않고 각 PC가 자신의 Vault를 탐지한다.
+
+## D-012 — 하나의 메인 PC만 로컬 작업 실행
+
+날짜: 2026-07-19
+상태: Accepted
+
+### 맥락
+
+Obsidian Vault는 기존 동기화 기능으로 다른 PC에 이미 반영된다. 따라서 모든 PC에 Companion과 Claude Code를 설치해 같은 작업을 실행할 필요가 없다.
+
+### 결정
+
+현재 개발 중인 Windows PC를 유일한 메인 실행 PC로 사용한다. Claude Code 구독 호출, 로컬 E5, Obsidian 읽기·쓰기는 모두 이 PC에서만 수행한다. 다른 PC는 Vercel 웹 UI만 사용한다. Vercel은 온라인 메인 Companion을 자동 선택하고 장치 선택 UI를 제공하지 않는다.
+
+메인 PC 경로는 다음으로 확정한다.
+
+```text
+project: C:\Users\EQR6\Downloads\claude\bible-study
+input: C:\Users\EQR6\Documents\Obsidian Vault\05 Raw\bible
+output: C:\Users\EQR6\Documents\Obsidian Vault\02 category\Bible\sermon
+```
+
+### 영향
+
+- D-010의 PC별 Companion·장치 선택 부분과 D-011의 다른 PC 경로 자동 탐지 요구는 이 결정으로 대체한다.
+- 다른 PC에는 저장소 clone, `.env.local`, Node.js, Claude Code가 필요 없다.
+- Companion은 Windows 로그인 시 자동 시작하고 중복 실행을 차단한다.
+- 완성본 전파는 Obsidian 동기화에 맡긴다.
+- 상세 계약은 `docs/10_MAIN_PC_EXECUTION.md`를 따른다.

@@ -8,6 +8,8 @@
     "start": "next start",
     "companion": "tsx scripts/run-local-companion.ts",
     "companion:verify": "tsx scripts/verify-local-companion.ts",
+    "companion:install-autostart": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/install-companion-autostart.ps1",
+    "companion:uninstall-autostart": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/uninstall-companion-autostart.ps1",
     "test": "tsx --test tests/**/*.test.ts",
     "test:sync:integration": "tsx scripts/verify-obsidian-sync.ts",
     "sync:obsidian": "tsx scripts/run-obsidian-sync.ts",
