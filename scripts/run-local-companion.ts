@@ -23,6 +23,7 @@ async function main() {
 const singleInstance = await acquireSingleInstance()
 const { readLocalSettings } = await import('../src/lib/local-settings')
 const { createResearchBundle } = await import('../src/lib/research/research')
+const { createSermonDraft } = await import('../src/lib/sermon/generate')
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim()
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()
@@ -47,7 +48,7 @@ const { data: device, error: deviceError } = await database
     user_id: user.id,
     device_name: settings.deviceName,
     vault_id: settings.vaultId,
-    capabilities: ['research', 'obsidian', 'e5', 'claude-code-subscription'],
+    capabilities: ['research', 'sermon', 'obsidian', 'e5', 'claude-code-subscription'],
     companion_version: '0.1.0',
     last_seen_at: new Date().toISOString(),
     revoked_at: null,
@@ -103,23 +104,35 @@ while (!stopping) {
         updated_at: new Date().toISOString(),
       }).eq('id', job.id).eq('device_id', device.id).eq('status', 'running')
     }, 10_000)
-    if (job.job_type !== 'research') throw new Error(`지원하지 않는 작업: ${job.job_type}`)
-    const payload = job.payload as {
-      query?: unknown
-      personalContext?: unknown
-      selectedKnowledgeIds?: string[]
-      selectedSopIds?: string[]
+    let result: unknown
+    if (job.job_type === 'research') {
+      const payload = job.payload as {
+        query?: unknown
+        personalContext?: unknown
+        selectedKnowledgeIds?: string[]
+        selectedSopIds?: string[]
+      }
+      if (typeof payload.query !== 'string') throw new Error('연구 질문이 없습니다.')
+      result = await createResearchBundle({
+        database,
+        userId: user.id,
+        model,
+        query: payload.query,
+        personalContext: typeof payload.personalContext === 'string' ? payload.personalContext : '',
+        selectedKnowledgeIds: payload.selectedKnowledgeIds,
+        selectedSopIds: payload.selectedSopIds,
+      })
+    } else if (job.job_type === 'sermon') {
+      const payload = job.payload as { research?: unknown }
+      result = await createSermonDraft({
+        database,
+        userId: user.id,
+        model,
+        research: payload.research,
+      })
+    } else {
+      throw new Error(`지원하지 않는 작업: ${job.job_type}`)
     }
-    if (typeof payload.query !== 'string') throw new Error('연구 질문이 없습니다.')
-    const result = await createResearchBundle({
-      database,
-      userId: user.id,
-      model,
-      query: payload.query,
-      personalContext: typeof payload.personalContext === 'string' ? payload.personalContext : '',
-      selectedKnowledgeIds: payload.selectedKnowledgeIds,
-      selectedSopIds: payload.selectedSopIds,
-    })
     await database.from('local_jobs').update({
       status: 'succeeded',
       result,

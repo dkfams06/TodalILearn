@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useState } from 'react'
 
+import { SermonView } from '@/components/sermon-view'
 import type { ExecutionMode } from '@/lib/execution/mode'
 import type { CompanionDevice, ResearchJobResponse } from '@/lib/execution/types'
 import { getResponseError, readJsonResponse } from '@/lib/http/client'
@@ -10,6 +11,7 @@ import type {
   ResearchKnowledgeSource,
   ResearchSopSource,
 } from '@/lib/research/types'
+import type { SermonDraft, SermonJobResponse } from '@/lib/sermon/types'
 
 type SelectionSetters = {
   knowledge: Set<string>
@@ -89,6 +91,9 @@ export function ResearchPanel() {
   const [error, setError] = useState<string | null>(null)
   const [executionMode, setExecutionMode] = useState<ExecutionMode>('local')
   const [mainDevice, setMainDevice] = useState<CompanionDevice | null>(null)
+  const [sermon, setSermon] = useState<SermonDraft | null>(null)
+  const [isSermonWorking, setIsSermonWorking] = useState(false)
+  const [sermonError, setSermonError] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -116,20 +121,22 @@ export function ResearchPanel() {
     }
   }, [])
 
-  async function waitForResearchJob(jobId: string) {
+  async function waitForJob<Result>(jobId: string) {
     for (let attempt = 0; attempt < 150; attempt += 1) {
       await new Promise((resolve) => window.setTimeout(resolve, 2_000))
       const response = await fetch(`/api/jobs/${jobId}`)
-      const job = await readJsonResponse<ResearchJobResponse | { error?: string }>(response)
+      const job = await readJsonResponse<
+        (ResearchJobResponse | SermonJobResponse) | { error?: string }
+      >(response)
       if (!response.ok || !('status' in job)) {
         throw new Error(getResponseError(job, '작업 상태를 확인하지 못했습니다.'))
       }
-      if (job.status === 'succeeded' && job.result) return job.result
+      if (job.status === 'succeeded' && job.result) return job.result as Result
       if (job.status === 'failed' || job.status === 'cancelled') {
-        throw new Error(job.error || 'Windows PC에서 연구 작업을 완료하지 못했습니다.')
+        throw new Error(job.error || 'Windows PC에서 작업을 완료하지 못했습니다.')
       }
     }
-    throw new Error('연구 작업 대기 시간이 초과되었습니다.')
+    throw new Error('작업 대기 시간이 초과되었습니다.')
   }
 
   async function requestResearch(includeSelection: boolean) {
@@ -153,9 +160,11 @@ export function ResearchPanel() {
         throw new Error(getResponseError(body, '연구 묶음을 만들지 못했습니다.'))
       }
       const bundle = response.status === 202 && 'jobId' in body
-        ? await waitForResearchJob(body.jobId)
+        ? await waitForJob<ResearchBundle>(body.jobId)
         : body as ResearchBundle
       setResult(bundle)
+      setSermon(null)
+      setSermonError(null)
       setSelection({
         knowledge: new Set(bundle.knowledgeSources.filter((source) => source.selected).map((source) => source.id)),
         sop: new Set(bundle.sopSources.filter((source) => source.selected).map((source) => source.id)),
@@ -164,6 +173,31 @@ export function ResearchPanel() {
       setError(researchError instanceof Error ? researchError.message : '연구 묶음을 만들지 못했습니다.')
     } finally {
       setIsWorking(false)
+    }
+  }
+
+  async function requestSermon() {
+    if (!result) return
+    setIsSermonWorking(true)
+    setSermonError(null)
+    try {
+      const response = await fetch('/api/sermon', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ research: result }),
+      })
+      const body = await readJsonResponse<SermonDraft | SermonJobResponse | { error?: string }>(response)
+      if (!response.ok) {
+        throw new Error(getResponseError(body, '설교를 생성하지 못했습니다.'))
+      }
+      const draft = response.status === 202 && 'jobId' in body
+        ? await waitForJob<SermonDraft>(body.jobId)
+        : body as SermonDraft
+      setSermon(draft)
+    } catch (requestError) {
+      setSermonError(requestError instanceof Error ? requestError.message : '설교를 생성하지 못했습니다.')
+    } finally {
+      setIsSermonWorking(false)
     }
   }
 
@@ -313,6 +347,22 @@ export function ResearchPanel() {
           <p className="research-meta">
             {result.provider} · {result.model} · {result.promptVersion} · {(result.elapsedMs / 1000).toFixed(1)}초
           </p>
+
+          <section className="sermon-request">
+            <div className="section-heading">
+              <div>
+                <h3>가정예배 설교</h3>
+                <p className="muted">
+                  지금 보이는 연구 묶음 그대로 약 10분 분량의 설교 원고를 만듭니다. 서버가 성경 인용과 자료 출처를 다시 검증합니다.
+                </p>
+              </div>
+              <button disabled={isSermonWorking || isWorking} onClick={() => void requestSermon()} type="button">
+                {isSermonWorking ? '설교 작성 중…' : '이 연구로 설교 만들기'}
+              </button>
+            </div>
+            {sermonError ? <p className="error-message">{sermonError}</p> : null}
+            {sermon ? <SermonView sermon={sermon} /> : null}
+          </section>
         </div>
       ) : null}
     </article>

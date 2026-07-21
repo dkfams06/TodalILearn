@@ -27,6 +27,7 @@
     "sprint3:verify": "node scripts/verify-sprint3.mjs",
     "search:evaluate": "tsx scripts/evaluate-search.ts",
     "research:evaluate": "tsx scripts/evaluate-research.ts",
+    "sermon:evaluate": "tsx scripts/evaluate-sermon.ts",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "db:migrate": "node scripts/apply-migration.mjs",

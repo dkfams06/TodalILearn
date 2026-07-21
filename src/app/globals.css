@@ -116,6 +116,14 @@ textarea { resize: vertical; }
 .research-source summary small { color: var(--muted); line-height: 1.4; }
 .source-locator { margin: 0.8rem; color: var(--muted); font-size: 0.78rem; overflow-wrap: anywhere; }
 .research-meta { color: var(--muted); font-size: 0.78rem; text-align: right; }
+.sermon-request { border-top: 1px solid var(--border); padding-top: 1.25rem; }
+.sermon-output { display: grid; gap: 1.4rem; margin-top: 1.4rem; }
+.sermon-section > h4 { margin: 0 0 0.55rem; color: var(--primary); }
+.sermon-body { margin: 0; line-height: 1.85; }
+.sermon-sentence sup { color: var(--primary); font-weight: 700; margin-left: 0.1rem; }
+.sermon-direct { background: #f2ead6; border-radius: 4px; padding: 0 0.15rem; }
+.sermon-prayer .sermon-body { border-left: 4px solid var(--primary); background: #eef3ed; border-radius: 0 12px 12px 0; padding: 0.9rem 1.1rem; }
+.sermon-legend { font-size: 0.8rem; }
 
 @media (max-width: 720px) {
   .app-shell { padding: 1rem; }
