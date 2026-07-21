@@ -124,6 +124,13 @@ textarea { resize: vertical; }
 .sermon-direct { background: #f2ead6; border-radius: 4px; padding: 0 0.15rem; }
 .sermon-prayer .sermon-body { border-left: 4px solid var(--primary); background: #eef3ed; border-radius: 0 12px 12px 0; padding: 0.9rem 1.1rem; }
 .sermon-legend { font-size: 0.8rem; }
+.saved-sermon-list { list-style: none; margin: 1rem 0 0; padding: 0; display: grid; gap: 0.6rem; }
+.saved-sermon-item { display: grid; gap: 0.25rem; width: 100%; text-align: left; border: 1px solid var(--border); border-radius: 10px; background: white; padding: 0.85rem 1rem; cursor: pointer; }
+.saved-sermon-item:hover { border-color: var(--primary); }
+.saved-sermon-item.active { border-color: var(--primary); background: #eef3ed; }
+.saved-sermon-item strong { line-height: 1.4; }
+.saved-sermon-item small { color: var(--muted); line-height: 1.4; overflow-wrap: anywhere; }
+.saved-sermon-list .sermon-output { margin: 0.6rem 0 0.4rem; }
 
 @media (max-width: 720px) {
   .app-shell { padding: 1rem; }

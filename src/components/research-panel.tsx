@@ -94,6 +94,7 @@ export function ResearchPanel() {
   const [sermon, setSermon] = useState<SermonDraft | null>(null)
   const [isSermonWorking, setIsSermonWorking] = useState(false)
   const [sermonError, setSermonError] = useState<string | null>(null)
+  const [sermonSaved, setSermonSaved] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -180,6 +181,7 @@ export function ResearchPanel() {
     if (!result) return
     setIsSermonWorking(true)
     setSermonError(null)
+    setSermonSaved(false)
     try {
       const response = await fetch('/api/sermon', {
         method: 'POST',
@@ -194,10 +196,28 @@ export function ResearchPanel() {
         ? await waitForJob<SermonDraft>(body.jobId)
         : body as SermonDraft
       setSermon(draft)
+      await saveSermon(draft)
     } catch (requestError) {
       setSermonError(requestError instanceof Error ? requestError.message : '설교를 생성하지 못했습니다.')
     } finally {
       setIsSermonWorking(false)
+    }
+  }
+
+  async function saveSermon(draft: SermonDraft) {
+    try {
+      const response = await fetch('/api/sermons', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ draft }),
+      })
+      const body = await readJsonResponse<{ id?: string; error?: string }>(response)
+      if (!response.ok) throw new Error(getResponseError(body, '설교를 저장하지 못했습니다.'))
+      setSermonSaved(true)
+      window.dispatchEvent(new CustomEvent('sermon-saved'))
+    } catch (saveError) {
+      setSermonSaved(false)
+      setSermonError(saveError instanceof Error ? saveError.message : '설교를 저장하지 못했습니다.')
     }
   }
 
@@ -361,6 +381,9 @@ export function ResearchPanel() {
               </button>
             </div>
             {sermonError ? <p className="error-message">{sermonError}</p> : null}
+            {sermon && sermonSaved ? (
+              <p className="success-message">저장됨 · 아래 “저장된 설교”에서 다시 볼 수 있습니다.</p>
+            ) : null}
             {sermon ? <SermonView sermon={sermon} /> : null}
           </section>
         </div>

@@ -60,6 +60,20 @@ export type SermonRequest = {
   research: ResearchBundle
 }
 
+export type SavedSermonSummary = {
+  id: string
+  title: string
+  query: string
+  coreMessage: string
+  estimatedMinutes: number
+  totalChars: number
+  createdAt: string
+}
+
+export type SavedSermon = SavedSermonSummary & {
+  draft: SermonDraft
+}
+
 export type SermonJobResponse = {
   jobId: string
   status: 'queued' | 'running' | 'succeeded' | 'failed' | 'cancelled'
