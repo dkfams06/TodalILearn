@@ -3,7 +3,6 @@ import { NextResponse } from 'next/server'
 import { getCurrentUser } from '@/lib/auth/session'
 import { getServerEnv } from '@/lib/env/server'
 import { getExecutionMode } from '@/lib/execution/mode'
-import { createResearchBundle } from '@/lib/research/research'
 import type { ResearchRequest } from '@/lib/research/types'
 import { createAdminClient } from '@/lib/supabase/admin'
 
@@ -23,7 +22,13 @@ function selectedIds(value: unknown, prefix: 'K' | 'S', field: string) {
 }
 
 export async function POST(request: Request) {
-  const user = await getCurrentUser()
+  let user: Awaited<ReturnType<typeof getCurrentUser>>
+  try {
+    user = await getCurrentUser()
+  } catch (error) {
+    const message = error instanceof Error ? error.message : '사용자를 확인하지 못했습니다.'
+    return NextResponse.json({ error: message }, { status: 500 })
+  }
   if (!user) return NextResponse.json({ error: '인증이 필요합니다.' }, { status: 401 })
 
   let body: ResearchRequest
@@ -81,6 +86,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ jobId: job.id, status: job.status }, { status: 202 })
     }
 
+    // 로컬 실행 모듈(E5 임베딩 → onnxruntime 네이티브 바이너리)은 웹 모드 서버리스에서
+    // 로드할 수 없으므로, 실제로 실행하는 로컬 분기에서만 lazy import한다.
+    const { createResearchBundle } = await import('@/lib/research/research')
     const env = getServerEnv()
     const result = await createResearchBundle({
       database: createAdminClient(),
