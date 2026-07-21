@@ -24,6 +24,7 @@ const singleInstance = await acquireSingleInstance()
 const { readLocalSettings } = await import('../src/lib/local-settings')
 const { createResearchBundle } = await import('../src/lib/research/research')
 const { createSermonDraft } = await import('../src/lib/sermon/generate')
+const { attachObsidianExport } = await import('../src/lib/sermon/obsidian-export')
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim()
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()
@@ -124,12 +125,13 @@ while (!stopping) {
       })
     } else if (job.job_type === 'sermon') {
       const payload = job.payload as { research?: unknown }
-      result = await createSermonDraft({
+      const draft = await createSermonDraft({
         database,
         userId: user.id,
         model,
         research: payload.research,
       })
+      result = await attachObsidianExport(draft, settings.outputFolder)
     } else {
       throw new Error(`지원하지 않는 작업: ${job.job_type}`)
     }

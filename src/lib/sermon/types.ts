@@ -54,6 +54,10 @@ export type SermonDraft = {
     inputTokens: number | null
     outputTokens: number | null
   }
+  savedToObsidian?: {
+    fileName: string
+    error?: string
+  }
 }
 
 export type SermonRequest = {

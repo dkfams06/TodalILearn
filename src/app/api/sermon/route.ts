@@ -60,13 +60,17 @@ export async function POST(request: Request) {
 
     // 설교 생성 모듈은 E5·Claude 실행 체인을 포함하므로 로컬 분기에서만 lazy import한다.
     const { createSermonDraft } = await import('@/lib/sermon/generate')
+    const { attachObsidianExport } = await import('@/lib/sermon/obsidian-export')
+    const { readLocalSettings } = await import('@/lib/local-settings')
     const env = getServerEnv()
-    const result = await createSermonDraft({
+    const draft = await createSermonDraft({
       database: createAdminClient(),
       userId: user.id,
       model: env.anthropicModel,
       research: body.research,
     })
+    const settings = await readLocalSettings()
+    const result = await attachObsidianExport(draft, settings.outputFolder)
     return NextResponse.json(result)
   } catch (error) {
     const message = error instanceof Error ? error.message : '설교를 생성하지 못했습니다.'

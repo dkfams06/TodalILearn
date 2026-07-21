@@ -30,6 +30,14 @@ export function SermonView({ sermon }: { sermon: SermonDraft }) {
         <h3>{sermon.title}</h3>
       </section>
 
+      {sermon.savedToObsidian ? (
+        sermon.savedToObsidian.error ? (
+          <p className="error-message">옵시디언 폴더 저장 실패: {sermon.savedToObsidian.error}</p>
+        ) : (
+          <p className="success-message">옵시디언 폴더에 저장됨 · {sermon.savedToObsidian.fileName}</p>
+        )
+      ) : null}
+
       {sermon.sections.map((section) => (
         <section className="sermon-section" key={section.sectionId}>
           <h4>{section.heading}</h4>
