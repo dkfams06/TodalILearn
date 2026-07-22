@@ -71,11 +71,75 @@ export type SavedSermonSummary = {
   coreMessage: string
   estimatedMinutes: number
   totalChars: number
+  isBaseline: boolean
+  createdAt: string
+}
+
+export type SermonVersionSource = 'ai_generation' | 'web' | 'obsidian' | 'conflict_backup'
+
+export type EditReasonTag =
+  | 'theology'
+  | 'citation'
+  | 'tone'
+  | 'awkward_expression'
+  | 'repetition'
+  | 'relationship_application'
+  | 'length'
+  | 'question'
+  | 'prayer'
+  | 'personal_preference'
+
+export type SermonVersion = {
+  id: string
+  versionNumber: number
+  source: SermonVersionSource
+  content: string
+  editReasons: EditReasonTag[]
+  note: string | null
+  createdAt: string
+}
+
+export type EvaluationVerdict = 'ready' | 'minor_edit' | 'major_edit' | 'reject'
+
+export type EvaluationScores = {
+  biblicalCentrality: number
+  interpretationNaturalness: number
+  sopRelevance: number
+  knowledgeRelevance: number
+  citationTrust: number
+  coreClarity: number
+  tone: number
+  applicationBalance: number
+  questionQuality: number
+  prayerQuality: number
+  lengthBalance: number
+  usageIntent: number
+}
+
+export type SermonEvaluationInput = {
+  scores: EvaluationScores
+  verdict: EvaluationVerdict
+  note: string | null
+  versionNumber: number | null
+}
+
+export type SermonEvaluation = SermonEvaluationInput & {
+  id: string
   createdAt: string
 }
 
 export type SavedSermon = SavedSermonSummary & {
   draft: SermonDraft
+  latestMarkdown: string
+  versions: SermonVersion[]
+  evaluations: SermonEvaluation[]
+}
+
+export type SermonVersionInput = {
+  content: string
+  editReasons: EditReasonTag[]
+  note: string | null
+  source: SermonVersionSource
 }
 
 export type SermonJobResponse = {

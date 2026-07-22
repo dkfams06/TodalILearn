@@ -1,9 +1,10 @@
 import { mkdir, rename, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 
-import { stringify } from 'yaml'
+import { formatSermonMarkdown } from './markdown'
+import type { SermonDraft } from './types'
 
-import type { SermonDraft, SermonSection } from './types'
+export { formatSermonMarkdown }
 
 export type SermonExportResult = {
   fileName: string
@@ -26,54 +27,6 @@ function sanitizeFileName(title: string) {
     .trim()
     .replace(/[. ]+$/, '')
   return cleaned || '설교'
-}
-
-function sectionBody(section: SermonSection) {
-  if (section.sectionId === 'scripture') {
-    return section.sentences.map((sentence) => sentence.text).join('\n')
-  }
-  // 묵상·적용 등은 한 문단으로 이어 읽도록 문장을 공백으로 잇는다.
-  return section.sentences.map((sentence) => sentence.text).join(' ')
-}
-
-export function formatSermonMarkdown(draft: SermonDraft, createdAt = new Date()) {
-  const isoDate = createdAt.toISOString().slice(0, 10)
-  const frontmatter = stringify({
-    title: draft.title,
-    type: 'sermon',
-    created: isoDate,
-    query: draft.query,
-    core_message: draft.coreMessage,
-    estimated_minutes: draft.estimatedMinutes,
-    total_chars: draft.totalChars,
-    model: draft.model,
-    prompt_version: draft.promptVersion,
-  }).trimEnd()
-
-  const lines: string[] = [`---\n${frontmatter}\n---`, '', `# ${draft.title}`, '', `> ${draft.coreMessage}`, '']
-
-  for (const section of draft.sections) {
-    lines.push(`## ${section.heading}`, '', sectionBody(section), '')
-  }
-
-  lines.push('## 나눔 질문', '')
-  draft.questions.forEach((question, index) => lines.push(`${index + 1}. ${question}`))
-  lines.push('')
-
-  lines.push('## 함께 드리는 기도', '', draft.prayer.map((sentence) => sentence.text).join(' '), '')
-
-  if (draft.knowledgeSources.length + draft.sopSources.length > 0) {
-    lines.push('## 사용한 자료', '')
-    for (const source of draft.knowledgeSources) {
-      lines.push(`- ${source.title} — ${source.relativePath}`)
-    }
-    for (const source of draft.sopSources) {
-      lines.push(`- ${source.book} ${source.chapter}장 · ${source.title} (예언의 신)`)
-    }
-    lines.push('')
-  }
-
-  return `${lines.join('\n').trimEnd()}\n`
 }
 
 async function uniqueTarget(outputFolder: string, baseName: string) {

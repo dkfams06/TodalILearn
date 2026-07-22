@@ -1,6 +1,9 @@
+import { parseEditReasons } from './evaluation'
+import type { SermonVersionInput } from './types'
 import type { SermonDraft } from './types'
 
 const MAX_DRAFT_BYTES = 200_000
+const MAX_VERSION_CHARS = 60_000
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
@@ -28,6 +31,29 @@ export function parseSermonDraftForSave(value: unknown): SermonDraft {
 
   const draft = value as unknown as SermonDraft
   return { ...draft, title, query, coreMessage, estimatedMinutes, totalChars }
+}
+
+// 편집한 Markdown 본문을 새 버전으로 저장하기 전에 검증한다.
+export function parseVersionInputForSave(value: unknown): SermonVersionInput {
+  if (!isRecord(value)) throw new Error('버전 데이터가 필요합니다.')
+
+  if (typeof value.content !== 'string' || !value.content.trim()) {
+    throw new Error('설교 본문이 비어 있습니다.')
+  }
+  const content = value.content.replace(/\r\n/g, '\n')
+  if (content.length > MAX_VERSION_CHARS) throw new Error('설교 본문이 너무 깁니다.')
+
+  const editReasons = parseEditReasons(value.editReasons)
+
+  let note: string | null = null
+  if (value.note !== undefined && value.note !== null && value.note !== '') {
+    if (typeof value.note !== 'string') throw new Error('메모가 올바르지 않습니다.')
+    const trimmed = value.note.trim()
+    if (trimmed.length > 2000) throw new Error('메모가 2,000자를 초과했습니다.')
+    note = trimmed || null
+  }
+
+  return { content, editReasons, note, source: 'web' }
 }
 
 function requiredString(value: unknown, field: string, maximum: number) {

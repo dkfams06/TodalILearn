@@ -2,9 +2,21 @@
 
 import { useEffect, useState } from 'react'
 
+import { SermonEditor } from '@/components/sermon-editor'
+import { SermonEvaluationForm } from '@/components/sermon-evaluation-form'
+import { SermonVersionHistory } from '@/components/sermon-version-history'
 import { SermonView } from '@/components/sermon-view'
 import { getResponseError, readJsonResponse } from '@/lib/http/client'
-import type { SavedSermon, SavedSermonSummary } from '@/lib/sermon/types'
+import type { SavedSermon, SavedSermonSummary, SermonEvaluation, SermonVersion } from '@/lib/sermon/types'
+
+type Tab = 'view' | 'edit' | 'history' | 'eval'
+
+const TABS: { id: Tab; label: string }[] = [
+  { id: 'view', label: '보기' },
+  { id: 'edit', label: '편집' },
+  { id: 'history', label: '버전 이력' },
+  { id: 'eval', label: '평가' },
+]
 
 function formatDate(value: string) {
   const date = new Date(value)
@@ -18,9 +30,11 @@ export function SavedSermonsPanel() {
   const [sermons, setSermons] = useState<SavedSermonSummary[]>([])
   const [selected, setSelected] = useState<SavedSermon | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [tab, setTab] = useState<Tab>('view')
   const [error, setError] = useState<string | null>(null)
   const [isLoadingList, setIsLoadingList] = useState(true)
   const [isLoadingOne, setIsLoadingOne] = useState(false)
+  const [baselineWorking, setBaselineWorking] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -55,6 +69,7 @@ export function SavedSermonsPanel() {
     }
     setIsLoadingOne(true)
     setSelectedId(id)
+    setTab('view')
     try {
       const response = await fetch(`/api/sermons/${id}`)
       const body = await readJsonResponse<SavedSermon | { error?: string }>(response)
@@ -71,12 +86,45 @@ export function SavedSermonsPanel() {
     }
   }
 
+  function applyVersions(versions: SermonVersion[]) {
+    setSelected((current) => current && ({
+      ...current,
+      versions,
+      latestMarkdown: versions[versions.length - 1]?.content ?? current.latestMarkdown,
+    }))
+  }
+
+  function applyEvaluations(evaluations: SermonEvaluation[]) {
+    setSelected((current) => current && ({ ...current, evaluations }))
+  }
+
+  async function toggleBaseline() {
+    if (!selected) return
+    const next = !selected.isBaseline
+    setBaselineWorking(true)
+    try {
+      const response = await fetch(`/api/sermons/${selected.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isBaseline: next }),
+      })
+      const body = await readJsonResponse<{ isBaseline?: boolean; error?: string }>(response)
+      if (!response.ok) throw new Error(getResponseError(body, '기준 설교 설정을 바꾸지 못했습니다.'))
+      setSelected((current) => current && ({ ...current, isBaseline: next }))
+      setSermons((current) => current.map((item) => item.id === selected.id ? { ...item, isBaseline: next } : item))
+    } catch (toggleError) {
+      setError(toggleError instanceof Error ? toggleError.message : '기준 설교 설정을 바꾸지 못했습니다.')
+    } finally {
+      setBaselineWorking(false)
+    }
+  }
+
   return (
     <article className="card wide">
       <div className="section-heading">
         <div>
           <h2>저장된 설교</h2>
-          <p className="muted">만든 설교는 자동으로 저장됩니다. 제목을 눌러 다시 볼 수 있습니다.</p>
+          <p className="muted">만든 설교는 자동으로 저장됩니다. 제목을 눌러 다시 보고, 편집·버전·평가를 남길 수 있습니다.</p>
         </div>
       </div>
 
@@ -96,14 +144,67 @@ export function SavedSermonsPanel() {
                 onClick={() => void openSermon(item.id)}
                 type="button"
               >
-                <strong>{item.title}</strong>
+                <strong>
+                  {item.isBaseline ? <span className="baseline-badge">기준</span> : null}
+                  {item.title}
+                </strong>
                 <small>{formatDate(item.createdAt)} · 약 {item.estimatedMinutes}분 · {item.query}</small>
               </button>
               {selectedId === item.id ? (
                 isLoadingOne ? (
                   <p className="muted">설교를 불러오는 중…</p>
                 ) : selected ? (
-                  <SermonView sermon={selected.draft} />
+                  <div className="sermon-detail">
+                    <div className="sermon-detail-bar">
+                      <div className="tab-row" role="tablist">
+                        {TABS.map((entry) => (
+                          <button
+                            aria-selected={tab === entry.id}
+                            className={`tab${tab === entry.id ? ' active' : ''}`}
+                            key={entry.id}
+                            onClick={() => setTab(entry.id)}
+                            role="tab"
+                            type="button"
+                          >
+                            {entry.label}
+                          </button>
+                        ))}
+                      </div>
+                      <button
+                        className={`secondary baseline-toggle${selected.isBaseline ? ' on' : ''}`}
+                        disabled={baselineWorking}
+                        onClick={() => void toggleBaseline()}
+                        type="button"
+                      >
+                        {selected.isBaseline ? '★ 기준 설교' : '☆ 기준 설교로 표시'}
+                      </button>
+                    </div>
+
+                    {tab === 'view' ? <SermonView sermon={selected.draft} /> : null}
+                    {tab === 'edit' ? (
+                      <SermonEditor
+                        key={selected.latestMarkdown}
+                        onSaved={applyVersions}
+                        original={selected.latestMarkdown}
+                        sermonId={selected.id}
+                      />
+                    ) : null}
+                    {tab === 'history' ? (
+                      <SermonVersionHistory
+                        onChanged={applyVersions}
+                        sermonId={selected.id}
+                        versions={selected.versions}
+                      />
+                    ) : null}
+                    {tab === 'eval' ? (
+                      <SermonEvaluationForm
+                        evaluations={selected.evaluations}
+                        onEvaluated={applyEvaluations}
+                        sermonId={selected.id}
+                        versionNumber={selected.versions[selected.versions.length - 1]?.versionNumber ?? null}
+                      />
+                    ) : null}
+                  </div>
                 ) : null
               ) : null}
             </li>

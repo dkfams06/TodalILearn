@@ -131,6 +131,53 @@ textarea { resize: vertical; }
 .saved-sermon-item strong { line-height: 1.4; }
 .saved-sermon-item small { color: var(--muted); line-height: 1.4; overflow-wrap: anywhere; }
 .saved-sermon-list .sermon-output { margin: 0.6rem 0 0.4rem; }
+.baseline-badge { display: inline-block; margin-right: 0.4rem; padding: 0 0.4rem; border-radius: 999px; background: var(--primary); color: white; font-size: 0.72rem; font-weight: 700; vertical-align: middle; }
+
+/* Sprint 7: 편집·버전·평가 */
+.sermon-detail { margin: 0.6rem 0 0.4rem; }
+.sermon-detail-bar { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1rem; }
+.tab-row { display: flex; gap: 0.35rem; flex-wrap: wrap; }
+.tab { padding: 0.4rem 0.85rem; border-radius: 999px; background: #e7e3d8; color: var(--text); font-size: 0.9rem; }
+.tab.active { background: var(--primary); color: white; }
+.baseline-toggle.on { background: #f2ead6; color: var(--primary); font-weight: 700; }
+
+.sermon-editor { display: grid; gap: 0.85rem; }
+.sermon-editor-area { font-family: "Consolas", "D2Coding", monospace; line-height: 1.7; min-height: 22rem; }
+.edit-reasons { border: 1px solid var(--border); border-radius: 10px; padding: 0.75rem 0.9rem; margin: 0; }
+.edit-reasons legend { color: var(--muted); font-size: 0.9rem; padding: 0 0.35rem; }
+.tag-row { display: flex; flex-wrap: wrap; gap: 0.4rem 0.65rem; }
+.tag-chip { display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.9rem; }
+.tag-chip input { width: auto; margin: 0; }
+
+.sermon-diff { margin-top: 0.5rem; }
+.diff-stats { font-size: 0.85rem; margin: 0 0 0.4rem; }
+.diff-body { margin: 0; padding: 0.75rem; border: 1px solid var(--border); border-radius: 10px; background: #fbfaf5; overflow-x: auto; font-family: "Consolas", "D2Coding", monospace; font-size: 0.85rem; line-height: 1.55; white-space: pre-wrap; }
+.diff-line { display: block; }
+.diff-add { background: #e4f2e4; color: #1f5130; }
+.diff-remove { background: #f6e2e0; color: #8f2f28; }
+.diff-equal { color: var(--muted); }
+
+.version-list { list-style: none; margin: 0 0 1rem; padding: 0; display: grid; gap: 0.5rem; }
+.version-item { display: grid; gap: 0.25rem; border: 1px solid var(--border); border-radius: 10px; padding: 0.7rem 0.9rem; background: white; }
+.version-source { margin-left: 0.4rem; padding: 0 0.4rem; border-radius: 6px; background: #eef3ed; color: var(--primary); font-size: 0.78rem; font-weight: 600; }
+.version-restore { justify-self: start; padding: 0.35rem 0.7rem; font-size: 0.85rem; }
+.version-current { color: var(--muted); font-size: 0.82rem; }
+.compare-controls { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.6rem; }
+.compare-controls label { display: inline-flex; align-items: center; gap: 0.4rem; color: var(--muted); font-size: 0.9rem; }
+.compare-controls select { width: auto; margin: 0; }
+
+.sermon-evaluation { display: grid; gap: 0.85rem; }
+.eval-grid { display: grid; gap: 0.5rem; }
+.eval-row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.score-row { display: flex; gap: 0.3rem; }
+.score-dot { width: 2rem; padding: 0.3rem 0; border-radius: 8px; background: #e7e3d8; color: var(--text); font-size: 0.85rem; }
+.score-dot.active { background: var(--primary); color: white; }
+.eval-history h4 { margin: 0.5rem 0 0.4rem; }
+.verdict-badge { padding: 0 0.4rem; border-radius: 6px; font-size: 0.78rem; font-weight: 700; }
+.verdict-ready { background: #e4f2e4; color: #1f5130; }
+.verdict-minor_edit { background: #eef3ed; color: var(--primary); }
+.verdict-major_edit { background: #f2ead6; color: #7a5a12; }
+.verdict-reject { background: #f6e2e0; color: var(--danger); }
 
 @media (max-width: 720px) {
   .app-shell { padding: 1rem; }

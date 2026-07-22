@@ -224,55 +224,74 @@ search_sop_chunks_text(query_terms[], count)
 
 의미 검색 함수는 요청된 임베딩 버전만 사용한다. 옵시디언 함수는 `user_id`와 삭제 상태를 함께 확인하며, 예언의 신 텍스트 함수는 실제 책·제목·본문에 포함된 검색어 수를 반환한다.
 
-## `family_worship_sermons`
+## `sermons` (구현 반영)
+
+설계 초안의 `family_worship_sermons` 대신, Sprint 6.5에서 `sermons` 테이블로 구현·운영한다.
+생성된 설교의 구조화 결과(draft)를 jsonb로 보존하고, 재렌더링에 필요한 요약 필드를 함께 둔다.
 
 ```text
 id uuid PK
 user_id uuid NOT NULL
 title text NOT NULL
-input_type text NOT NULL
-input_value text NOT NULL
-personal_context text
-main_bible_text text
-core_message text
-estimated_minutes integer
-sermon_markdown text NOT NULL
-discussion_questions jsonb
-prayer text
-used_bible_references jsonb
-used_resource_ids jsonb
-used_sop_ids jsonb
-source_map jsonb
-generation_model text
-generation_prompt_version text
-obsidian_relative_path text
-content_hash text
-sync_status text
-last_synced_at timestamptz
+query text NOT NULL
+core_message text NOT NULL
+estimated_minutes integer NOT NULL
+total_chars integer NOT NULL
+draft jsonb NOT NULL            생성된 SermonDraft 전체(문장 유형·출처 포함)
+is_baseline boolean NOT NULL DEFAULT false   Sprint 7: 기준 설교 표시
 created_at timestamptz
 updated_at timestamptz
 ```
 
-## `sermon_versions`
+`draft`에는 문장별 유형(direct/summary/synthesis/application/transition/prayer)과 출처 ID가
+포함되어 출처 지도를 대신한다. 옵시디언 완성본 저장(상대경로·sync_status)은 후속 Sprint에서 추가한다.
+
+## `sermon_versions` (구현 반영)
+
+`sermons`를 참조하는 수정 이력. 편집본은 Markdown 스냅샷으로 보존한다(Sprint 7, 마이그레이션 009).
 
 ```text
 id uuid PK
-sermon_id uuid NOT NULL
+sermon_id uuid NOT NULL FK -> sermons.id on delete cascade
+user_id uuid NOT NULL
 version_number integer NOT NULL
 source text NOT NULL
-content text NOT NULL
+content text NOT NULL           Markdown 본문
 content_hash text NOT NULL
+edit_reasons jsonb NOT NULL DEFAULT '[]'   수정 사유 태그
+note text
 created_at timestamptz
+unique(sermon_id, version_number)
 ```
 
 `source`:
 
 ```text
-ai_generation
-web
-obsidian
-conflict_backup
+ai_generation      생성 직후 버전 1
+web                웹 편집본(복원 포함)
+obsidian           옵시디언 수정본(후속 Sprint)
+conflict_backup    충돌 백업(후속 Sprint)
 ```
+
+버전 1은 설교 저장 시 `draft`를 Markdown으로 변환해 생성한다. 마이그레이션 009 이전에 저장된
+설교는 최초 조회 시 버전 1을 지연 생성한다.
+
+## `sermon_evaluations` (Sprint 7)
+
+사용자 품질 평가표. append-only 이력으로 쌓는다(마이그레이션 009).
+
+```text
+id uuid PK
+sermon_id uuid NOT NULL FK -> sermons.id on delete cascade
+user_id uuid NOT NULL
+version_number integer          평가 대상 버전(선택)
+scores jsonb NOT NULL           12항목 1~5점
+verdict text NOT NULL           ready | minor_edit | major_edit | reject
+note text
+created_at timestamptz
+```
+
+`scores`는 `docs/05_EVALUATION_PLAN.md`의 12개 항목 키를 가진다.
 
 ## 구조화 JSON 계약
 
