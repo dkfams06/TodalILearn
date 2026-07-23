@@ -58,6 +58,9 @@ const { data: device, error: deviceError } = await database
   .select('id')
   .single()
 if (deviceError) throw deviceError
+if (!device) throw new Error('Local Companion 장치를 등록하지 못했습니다.')
+const deviceId = device.id
+const userId = user.id
 
 let stopping = false
 process.on('SIGINT', () => { stopping = true })
@@ -65,6 +68,18 @@ process.on('SIGTERM', () => { stopping = true })
 
 console.log(`Local Companion 시작: ${settings.deviceName} (${device.id})`)
 console.log(`Obsidian 입력: ${settings.inputFolder}`)
+
+async function updateDeviceHeartbeat() {
+  const now = new Date().toISOString()
+  const { error } = await database.from('local_devices').update({
+    last_seen_at: now,
+    updated_at: now,
+  }).eq('id', deviceId).eq('user_id', userId)
+  if (error) console.error(`장치 heartbeat 실패: ${error.message}`)
+}
+
+// Claude 작업이 몇 분 걸리는 동안에도 웹에서 메인 PC를 온라인으로 인식해야 한다.
+const deviceHeartbeat = setInterval(() => void updateDeviceHeartbeat(), 10_000)
 
 const staleHeartbeat = new Date(Date.now() - 45_000).toISOString()
 const { error: recoveryError } = await database
@@ -81,10 +96,7 @@ const { error: recoveryError } = await database
 if (recoveryError) throw recoveryError
 
 while (!stopping) {
-  await database.from('local_devices').update({
-    last_seen_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  }).eq('id', device.id).eq('user_id', user.id)
+  await updateDeviceHeartbeat()
 
   const { data: jobs, error: claimError } = await database.rpc('claim_local_job', {
     requested_user_id: user.id,
@@ -173,11 +185,13 @@ while (!stopping) {
   }
 }
 
+clearInterval(deviceHeartbeat)
 console.log('Local Companion을 종료했습니다.')
 singleInstance.close()
 }
 
 void main().catch((error) => {
   console.error(error instanceof Error ? error.message : error)
-  process.exitCode = 1
+  // 단일 실행 포트 서버가 이벤트 루프를 붙잡아 고아 Companion이 되는 것을 막는다.
+  process.exit(1)
 })
