@@ -54,10 +54,6 @@ export type SermonDraft = {
     inputTokens: number | null
     outputTokens: number | null
   }
-  savedToObsidian?: {
-    fileName: string
-    error?: string
-  }
 }
 
 export type SermonRequest = {
@@ -72,6 +68,8 @@ export type SavedSermonSummary = {
   estimatedMinutes: number
   totalChars: number
   isBaseline: boolean
+  obsidianRelativePath: string | null
+  obsidianSyncedAt: string | null
   createdAt: string
 }
 
@@ -146,5 +144,17 @@ export type SermonJobResponse = {
   jobId: string
   status: 'queued' | 'running' | 'succeeded' | 'failed' | 'cancelled'
   result?: SermonDraft
+  error?: string
+}
+
+export type SermonExportResultPayload = {
+  relativePath: string
+  syncedAt: string
+}
+
+export type SermonExportJobResponse = {
+  jobId: string
+  status: 'queued' | 'running' | 'succeeded' | 'failed' | 'cancelled'
+  result?: SermonExportResultPayload
   error?: string
 }

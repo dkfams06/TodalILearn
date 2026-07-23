@@ -1,12 +1,12 @@
-import { mkdir, rename, writeFile } from 'node:fs/promises'
+import { access, mkdir, rename, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 
 import { formatSermonMarkdown } from './markdown'
-import type { SermonDraft } from './types'
 
 export { formatSermonMarkdown }
 
 export type SermonExportResult = {
+  relativePath: string // 출력 폴더 기준 상대경로 (예: 2026/2026-07-23 제목.md)
   fileName: string
   absolutePath: string
 }
@@ -19,7 +19,7 @@ function stripControl(value: string) {
   return result
 }
 
-function sanitizeFileName(title: string) {
+export function sanitizeFileName(title: string) {
   // Windows에서 금지된 문자와 제어문자를 제거하고 공백을 정리한다.
   const cleaned = stripControl(title)
     .replace(/[\\/:*?"<>|]/g, ' ')
@@ -29,56 +29,67 @@ function sanitizeFileName(title: string) {
   return cleaned || '설교'
 }
 
-async function uniqueTarget(outputFolder: string, baseName: string) {
-  const { access } = await import('node:fs/promises')
+async function exists(absolutePath: string) {
+  try {
+    await access(/*turbopackIgnore: true*/ absolutePath)
+    return true
+  } catch {
+    return false
+  }
+}
+
+// 같은 연도 폴더에서 다른 설교가 같은 이름을 점유하면 " (2)"로 회피한다.
+async function uniqueRelativePath(outputFolder: string, yearFolder: string, baseName: string) {
   for (let attempt = 0; attempt < 100; attempt += 1) {
     const suffix = attempt === 0 ? '' : ` (${attempt + 1})`
     const fileName = `${baseName}${suffix}.md`
-    const absolutePath = path.join(outputFolder, fileName)
-    try {
-      await access(absolutePath)
-    } catch {
-      return { fileName, absolutePath }
+    const relativePath = path.posix.join(yearFolder, fileName)
+    if (!(await exists(path.join(outputFolder, yearFolder, fileName)))) {
+      return { relativePath, fileName }
     }
   }
   throw new Error('설교 파일 이름이 너무 많이 중복되었습니다.')
 }
 
-export async function writeSermonToObsidian({
-  draft,
+async function atomicWrite(absolutePath: string, markdown: string) {
+  const folder = path.dirname(absolutePath)
+  await mkdir(/*turbopackIgnore: true*/ folder, { recursive: true })
+  const temporaryPath = path.join(folder, `.${path.basename(absolutePath)}.tmp`)
+  await writeFile(/*turbopackIgnore: true*/ temporaryPath, markdown, 'utf8')
+  await rename(/*turbopackIgnore: true*/ temporaryPath, absolutePath)
+}
+
+// 완성 설교 Markdown을 옵시디언 출력 폴더의 연도 하위 폴더에 저장한다.
+// existingRelativePath가 있으면 그 파일을 덮어써 같은 설교가 중복 파일을 만들지 않게 한다.
+// 저장은 임시 파일 후 원자적 교체라 실패해도 기존 파일이 손상되지 않는다.
+export async function exportSermonToObsidian({
   outputFolder,
+  title,
+  markdown,
+  existingRelativePath,
   createdAt = new Date(),
 }: {
-  draft: SermonDraft
   outputFolder: string
+  title: string
+  markdown: string
+  existingRelativePath?: string | null
   createdAt?: Date
 }): Promise<SermonExportResult> {
   const folder = outputFolder.trim()
   if (!folder) throw new Error('완성 설교 폴더가 설정되지 않았습니다.')
 
-  await mkdir(folder, { recursive: true })
-  const baseName = `${createdAt.toISOString().slice(0, 10)} ${sanitizeFileName(draft.title)}`
-  const { fileName, absolutePath } = await uniqueTarget(folder, baseName)
-  const temporaryPath = path.join(folder, `.${fileName}.tmp`)
-
-  const markdown = formatSermonMarkdown(draft, createdAt)
-  await writeFile(temporaryPath, markdown, 'utf8')
-  await rename(temporaryPath, absolutePath)
-
-  return { fileName, absolutePath }
-}
-
-// 파일 저장 실패가 설교 생성 자체를 무너뜨리지 않도록, 결과(파일명 또는 오류)를
-// draft에 기록해 반환한다. 사용자는 화면에서 저장 여부를 바로 확인할 수 있다.
-export async function attachObsidianExport(
-  draft: SermonDraft,
-  outputFolder: string,
-): Promise<SermonDraft> {
-  try {
-    const { fileName } = await writeSermonToObsidian({ draft, outputFolder })
-    return { ...draft, savedToObsidian: { fileName } }
-  } catch (error) {
-    const message = error instanceof Error ? error.message : '옵시디언 폴더에 저장하지 못했습니다.'
-    return { ...draft, savedToObsidian: { fileName: '', error: message } }
+  if (existingRelativePath) {
+    // 제목이 바뀌어도 최초 경로를 고정해 고아·중복 파일을 막는다.
+    const normalized = existingRelativePath.split(path.sep).join('/')
+    const absolutePath = path.join(folder, normalized)
+    await atomicWrite(absolutePath, markdown)
+    return { relativePath: normalized, fileName: path.basename(normalized), absolutePath }
   }
+
+  const yearFolder = String(createdAt.getFullYear())
+  const baseName = `${createdAt.toISOString().slice(0, 10)} ${sanitizeFileName(title)}`
+  const { relativePath, fileName } = await uniqueRelativePath(folder, yearFolder, baseName)
+  const absolutePath = path.join(folder, yearFolder, fileName)
+  await atomicWrite(absolutePath, markdown)
+  return { relativePath, fileName, absolutePath }
 }

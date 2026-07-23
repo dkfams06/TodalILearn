@@ -11,7 +11,7 @@ import type {
   ResearchKnowledgeSource,
   ResearchSopSource,
 } from '@/lib/research/types'
-import type { SermonDraft, SermonJobResponse } from '@/lib/sermon/types'
+import type { SermonDraft, SermonExportJobResponse, SermonExportResultPayload, SermonJobResponse } from '@/lib/sermon/types'
 
 type SelectionSetters = {
   knowledge: Set<string>
@@ -95,6 +95,8 @@ export function ResearchPanel() {
   const [isSermonWorking, setIsSermonWorking] = useState(false)
   const [sermonError, setSermonError] = useState<string | null>(null)
   const [sermonSaved, setSermonSaved] = useState(false)
+  const [exportPath, setExportPath] = useState<string | null>(null)
+  const [exportError, setExportError] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -182,6 +184,8 @@ export function ResearchPanel() {
     setIsSermonWorking(true)
     setSermonError(null)
     setSermonSaved(false)
+    setExportPath(null)
+    setExportError(null)
     try {
       const response = await fetch('/api/sermon', {
         method: 'POST',
@@ -212,12 +216,28 @@ export function ResearchPanel() {
         body: JSON.stringify({ draft }),
       })
       const body = await readJsonResponse<{ id?: string; error?: string }>(response)
-      if (!response.ok) throw new Error(getResponseError(body, '설교를 저장하지 못했습니다.'))
+      if (!response.ok || !body.id) throw new Error(getResponseError(body, '설교를 저장하지 못했습니다.'))
       setSermonSaved(true)
       window.dispatchEvent(new CustomEvent('sermon-saved'))
+      await exportSavedSermon(body.id)
     } catch (saveError) {
       setSermonSaved(false)
       setSermonError(saveError instanceof Error ? saveError.message : '설교를 저장하지 못했습니다.')
+    }
+  }
+
+  // 저장 직후 자동으로 옵시디언 완성본을 만든다. 실패해도 설교 저장 자체는 이미 성공한 상태다.
+  async function exportSavedSermon(sermonId: string) {
+    try {
+      const response = await fetch(`/api/sermons/${sermonId}/export`, { method: 'POST' })
+      const body = await readJsonResponse<SermonExportResultPayload | SermonExportJobResponse | { error?: string }>(response)
+      if (!response.ok) throw new Error(getResponseError(body, '옵시디언에 저장하지 못했습니다.'))
+      const outcome = response.status === 202 && 'jobId' in body
+        ? await waitForJob<SermonExportResultPayload>(body.jobId)
+        : body as SermonExportResultPayload
+      setExportPath(outcome.relativePath)
+    } catch (exportRequestError) {
+      setExportError(exportRequestError instanceof Error ? exportRequestError.message : '옵시디언에 저장하지 못했습니다.')
     }
   }
 
@@ -384,6 +404,8 @@ export function ResearchPanel() {
             {sermon && sermonSaved ? (
               <p className="success-message">저장됨 · 아래 “저장된 설교”에서 다시 볼 수 있습니다.</p>
             ) : null}
+            {exportPath ? <p className="success-message">옵시디언 폴더에 저장됨 · {exportPath}</p> : null}
+            {exportError ? <p className="error-message">옵시디언 폴더 저장 실패: {exportError}</p> : null}
             {sermon ? <SermonView sermon={sermon} /> : null}
           </section>
         </div>

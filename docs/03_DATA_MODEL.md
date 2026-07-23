@@ -239,12 +239,16 @@ estimated_minutes integer NOT NULL
 total_chars integer NOT NULL
 draft jsonb NOT NULL            생성된 SermonDraft 전체(문장 유형·출처 포함)
 is_baseline boolean NOT NULL DEFAULT false   Sprint 7: 기준 설교 표시
+obsidian_relative_path text     Sprint 8: 출력 폴더 기준 상대경로. 있으면 항상 이 경로를 덮어쓴다
+obsidian_synced_at timestamptz  Sprint 8: 마지막 옵시디언 저장 시각
+obsidian_content_hash text      Sprint 8: 마지막으로 저장한 Markdown의 sha256
 created_at timestamptz
 updated_at timestamptz
 ```
 
 `draft`에는 문장별 유형(direct/summary/synthesis/application/transition/prayer)과 출처 ID가
-포함되어 출처 지도를 대신한다. 옵시디언 완성본 저장(상대경로·sync_status)은 후속 Sprint에서 추가한다.
+포함되어 출처 지도를 대신한다. `obsidian_relative_path`는 파일 정체성을 설교 id에 고정해, 제목이
+편집으로 바뀌어도 같은 파일을 덮어쓰고 중복 파일을 만들지 않는다.
 
 ## `sermon_versions` (구현 반영)
 
@@ -269,8 +273,8 @@ unique(sermon_id, version_number)
 ```text
 ai_generation      생성 직후 버전 1
 web                웹 편집본(복원 포함)
-obsidian           옵시디언 수정본(후속 Sprint)
-conflict_backup    충돌 백업(후속 Sprint)
+obsidian           옵시디언 수정본(Sprint 9 양방향 동기화에서 사용)
+conflict_backup    충돌 백업(Sprint 9 양방향 동기화에서 사용)
 ```
 
 버전 1은 설교 저장 시 `draft`를 Markdown으로 변환해 생성한다. 마이그레이션 009 이전에 저장된

@@ -7,7 +7,14 @@ import { SermonEvaluationForm } from '@/components/sermon-evaluation-form'
 import { SermonVersionHistory } from '@/components/sermon-version-history'
 import { SermonView } from '@/components/sermon-view'
 import { getResponseError, readJsonResponse } from '@/lib/http/client'
-import type { SavedSermon, SavedSermonSummary, SermonEvaluation, SermonVersion } from '@/lib/sermon/types'
+import type {
+  SavedSermon,
+  SavedSermonSummary,
+  SermonEvaluation,
+  SermonExportJobResponse,
+  SermonExportResultPayload,
+  SermonVersion,
+} from '@/lib/sermon/types'
 
 type Tab = 'view' | 'edit' | 'history' | 'eval'
 
@@ -35,6 +42,8 @@ export function SavedSermonsPanel() {
   const [isLoadingList, setIsLoadingList] = useState(true)
   const [isLoadingOne, setIsLoadingOne] = useState(false)
   const [baselineWorking, setBaselineWorking] = useState(false)
+  const [exportWorking, setExportWorking] = useState(false)
+  const [exportError, setExportError] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -70,6 +79,7 @@ export function SavedSermonsPanel() {
     setIsLoadingOne(true)
     setSelectedId(id)
     setTab('view')
+    setExportError(null)
     try {
       const response = await fetch(`/api/sermons/${id}`)
       const body = await readJsonResponse<SavedSermon | { error?: string }>(response)
@@ -96,6 +106,54 @@ export function SavedSermonsPanel() {
 
   function applyEvaluations(evaluations: SermonEvaluation[]) {
     setSelected((current) => current && ({ ...current, evaluations }))
+  }
+
+  async function waitForExportJob(jobId: string) {
+    for (let attempt = 0; attempt < 150; attempt += 1) {
+      await new Promise((resolve) => window.setTimeout(resolve, 2_000))
+      const response = await fetch(`/api/jobs/${jobId}`)
+      const job = await readJsonResponse<SermonExportJobResponse | { error?: string }>(response)
+      if (!response.ok || !('status' in job)) {
+        throw new Error(getResponseError(job, '작업 상태를 확인하지 못했습니다.'))
+      }
+      if (job.status === 'succeeded' && job.result) return job.result
+      if (job.status === 'failed' || job.status === 'cancelled') {
+        throw new Error(job.error || 'Windows PC에서 작업을 완료하지 못했습니다.')
+      }
+    }
+    throw new Error('작업 대기 시간이 초과되었습니다.')
+  }
+
+  function applyExportOutcome(id: string, outcome: SermonExportResultPayload) {
+    setSelected((current) => current && current.id === id ? ({
+      ...current,
+      obsidianRelativePath: outcome.relativePath,
+      obsidianSyncedAt: outcome.syncedAt,
+    }) : current)
+    setSermons((current) => current.map((item) => item.id === id ? ({
+      ...item,
+      obsidianRelativePath: outcome.relativePath,
+      obsidianSyncedAt: outcome.syncedAt,
+    }) : item))
+  }
+
+  async function exportToObsidian() {
+    if (!selected) return
+    setExportWorking(true)
+    setExportError(null)
+    try {
+      const response = await fetch(`/api/sermons/${selected.id}/export`, { method: 'POST' })
+      const body = await readJsonResponse<SermonExportResultPayload | SermonExportJobResponse | { error?: string }>(response)
+      if (!response.ok) throw new Error(getResponseError(body, '옵시디언에 저장하지 못했습니다.'))
+      const outcome = response.status === 202 && 'jobId' in body
+        ? await waitForExportJob(body.jobId)
+        : body as SermonExportResultPayload
+      applyExportOutcome(selected.id, outcome)
+    } catch (exportRequestError) {
+      setExportError(exportRequestError instanceof Error ? exportRequestError.message : '옵시디언에 저장하지 못했습니다.')
+    } finally {
+      setExportWorking(false)
+    }
   }
 
   async function toggleBaseline() {
@@ -148,7 +206,10 @@ export function SavedSermonsPanel() {
                   {item.isBaseline ? <span className="baseline-badge">기준</span> : null}
                   {item.title}
                 </strong>
-                <small>{formatDate(item.createdAt)} · 약 {item.estimatedMinutes}분 · {item.query}</small>
+                <small>
+                  {formatDate(item.createdAt)} · 약 {item.estimatedMinutes}분 · {item.query}
+                  {item.obsidianSyncedAt ? ` · 옵시디언 저장됨(${formatDate(item.obsidianSyncedAt)})` : ''}
+                </small>
               </button>
               {selectedId === item.id ? (
                 isLoadingOne ? (
@@ -170,15 +231,30 @@ export function SavedSermonsPanel() {
                           </button>
                         ))}
                       </div>
-                      <button
-                        className={`secondary baseline-toggle${selected.isBaseline ? ' on' : ''}`}
-                        disabled={baselineWorking}
-                        onClick={() => void toggleBaseline()}
-                        type="button"
-                      >
-                        {selected.isBaseline ? '★ 기준 설교' : '☆ 기준 설교로 표시'}
-                      </button>
+                      <div className="detail-bar-actions">
+                        <button
+                          className="secondary"
+                          disabled={exportWorking}
+                          onClick={() => void exportToObsidian()}
+                          type="button"
+                        >
+                          {exportWorking ? '저장 중…' : '옵시디언에 저장'}
+                        </button>
+                        <button
+                          className={`secondary baseline-toggle${selected.isBaseline ? ' on' : ''}`}
+                          disabled={baselineWorking}
+                          onClick={() => void toggleBaseline()}
+                          type="button"
+                        >
+                          {selected.isBaseline ? '★ 기준 설교' : '☆ 기준 설교로 표시'}
+                        </button>
+                      </div>
                     </div>
+
+                    {selected.obsidianRelativePath ? (
+                      <p className="success-message">옵시디언 폴더에 저장됨 · {selected.obsidianRelativePath}</p>
+                    ) : null}
+                    {exportError ? <p className="error-message">{exportError}</p> : null}
 
                     {tab === 'view' ? <SermonView sermon={selected.draft} /> : null}
                     {tab === 'edit' ? (

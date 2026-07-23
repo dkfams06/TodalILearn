@@ -4,7 +4,7 @@ import os from 'node:os'
 import path from 'node:path'
 import test from 'node:test'
 
-import { formatSermonMarkdown, writeSermonToObsidian } from '../src/lib/sermon/obsidian-export'
+import { exportSermonToObsidian, formatSermonMarkdown } from '../src/lib/sermon/obsidian-export'
 import type { SermonDraft } from '../src/lib/sermon/types'
 
 function draft(overrides: Partial<SermonDraft> = {}): SermonDraft {
@@ -60,26 +60,75 @@ test('설교 Markdown에 frontmatter와 모든 구획이 포함된다', () => {
   assert.match(markdown, /이스라엘의 승리법칙 — a\.md/)
 })
 
-test('실제 파일을 옵시디언 폴더에 원자적으로 쓰고 중복 시 새 이름을 만든다', async () => {
+test('최초 저장은 연도 폴더 아래 파일을 원자적으로 만든다', async () => {
   const folder = await mkdtemp(path.join(os.tmpdir(), 'sermon-export-'))
-  const first = await writeSermonToObsidian({ draft: draft(), outputFolder: folder, createdAt: new Date('2026-07-22T00:00:00Z') })
-  assert.equal(first.fileName, '2026-07-22 작은 일도 함께 여쭈어요.md')
-  const saved = await readFile(first.absolutePath, 'utf8')
+  const markdown = formatSermonMarkdown(draft(), new Date('2026-07-22T00:00:00Z'))
+  const result = await exportSermonToObsidian({
+    outputFolder: folder,
+    title: draft().title,
+    markdown,
+    createdAt: new Date('2026-07-22T00:00:00Z'),
+  })
+  assert.equal(result.relativePath, '2026/2026-07-22 작은 일도 함께 여쭈어요.md')
+  assert.equal(result.fileName, '2026-07-22 작은 일도 함께 여쭈어요.md')
+
+  const saved = await readFile(result.absolutePath, 'utf8')
   assert.match(saved, /# 작은 일도 함께 여쭈어요/)
 
-  const second = await writeSermonToObsidian({ draft: draft(), outputFolder: folder, createdAt: new Date('2026-07-22T00:00:00Z') })
+  const entries = await readdir(path.join(folder, '2026'))
+  assert.equal(entries.filter((name) => name.endsWith('.tmp')).length, 0)
+})
+
+test('같은 설교(existingRelativePath 지정)는 같은 파일을 덮어써 중복이 생기지 않는다', async () => {
+  const folder = await mkdtemp(path.join(os.tmpdir(), 'sermon-export-'))
+  const createdAt = new Date('2026-07-22T00:00:00Z')
+  const first = await exportSermonToObsidian({
+    outputFolder: folder,
+    title: '작은 일도 함께 여쭈어요',
+    markdown: formatSermonMarkdown(draft(), createdAt),
+    createdAt,
+  })
+
+  const editedMarkdown = formatSermonMarkdown(draft({ title: '편집된 제목' }), createdAt)
+  const second = await exportSermonToObsidian({
+    outputFolder: folder,
+    title: '작은 일도 함께 여쭈어요', // 제목이 바뀌어도 경로는 고정
+    markdown: editedMarkdown,
+    existingRelativePath: first.relativePath,
+    createdAt,
+  })
+
+  assert.equal(second.relativePath, first.relativePath)
+  assert.equal(second.absolutePath, first.absolutePath)
+
+  const entries = await readdir(path.join(folder, '2026'))
+  assert.equal(entries.length, 1)
+  const saved = await readFile(second.absolutePath, 'utf8')
+  assert.match(saved, /# 편집된 제목/)
+})
+
+test('다른 설교가 같은 이름을 쓰면 새 이름으로 회피한다', async () => {
+  const folder = await mkdtemp(path.join(os.tmpdir(), 'sermon-export-'))
+  const createdAt = new Date('2026-07-22T00:00:00Z')
+  const markdown = formatSermonMarkdown(draft(), createdAt)
+
+  const first = await exportSermonToObsidian({ outputFolder: folder, title: draft().title, markdown, createdAt })
+  const second = await exportSermonToObsidian({ outputFolder: folder, title: draft().title, markdown, createdAt })
+
+  assert.notEqual(second.relativePath, first.relativePath)
   assert.equal(second.fileName, '2026-07-22 작은 일도 함께 여쭈어요 (2).md')
 
-  const entries = await readdir(folder)
-  const tempLeftover = entries.filter((name) => name.endsWith('.tmp'))
-  assert.equal(tempLeftover.length, 0)
+  const entries = await readdir(path.join(folder, '2026'))
+  assert.equal(entries.length, 2)
 })
 
 test('파일명에서 Windows 금지 문자를 제거한다', async () => {
   const folder = await mkdtemp(path.join(os.tmpdir(), 'sermon-export-'))
-  const result = await writeSermonToObsidian({
-    draft: draft({ title: '진리: 안다 / 산다 * "함께"?' }),
+  const title = '진리: 안다 / 산다 * "함께"?'
+  const result = await exportSermonToObsidian({
     outputFolder: folder,
+    title,
+    markdown: formatSermonMarkdown(draft({ title }), new Date('2026-07-22T00:00:00Z')),
     createdAt: new Date('2026-07-22T00:00:00Z'),
   })
   assert.ok(!/[\\/:*?"<>|]/.test(result.fileName.replace(/\.md$/, '')))

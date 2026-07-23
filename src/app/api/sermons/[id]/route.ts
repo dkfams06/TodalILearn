@@ -8,7 +8,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 
 export const runtime = 'nodejs'
 
-const SERMON_COLUMNS = 'id,title,query,core_message,estimated_minutes,total_chars,is_baseline,created_at,draft'
+const SERMON_COLUMNS = 'id,title,query,core_message,estimated_minutes,total_chars,is_baseline,obsidian_relative_path,obsidian_synced_at,created_at,draft'
 
 type SermonRow = {
   id: string
@@ -18,6 +18,8 @@ type SermonRow = {
   estimated_minutes: number
   total_chars: number
   is_baseline: boolean
+  obsidian_relative_path: string | null
+  obsidian_synced_at: string | null
   created_at: string
   draft: SavedSermon['draft']
 }
@@ -56,6 +58,8 @@ export async function GET(_request: Request, context: RouteContext<'/api/sermons
       estimatedMinutes: row.estimated_minutes,
       totalChars: row.total_chars,
       isBaseline: row.is_baseline,
+      obsidianRelativePath: row.obsidian_relative_path,
+      obsidianSyncedAt: row.obsidian_synced_at,
       createdAt: row.created_at,
       draft: row.draft,
       latestMarkdown,

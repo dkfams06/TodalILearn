@@ -314,6 +314,18 @@ Vercel 화면과 항상 켜진 메인 Windows PC를 작업 큐로 연결한다. 
 - Supabase 레코드에서 로컬 상대경로 확인 가능
 - 저장 실패 시 기존 파일이 손상되지 않음
 
+### 구현 기록 — 2026-07-23
+
+- 파일 정체성을 설교 id에 고정했다(`sermons.obsidian_relative_path`). 최초 저장은 연도 폴더 아래
+  새 이름을 계산하고, 이후 저장은 같은 경로를 덮어써 중복 파일이 생기지 않는다.
+- 옵시디언 저장을 설교 "생성" 시점에서 "저장" 시점으로 옮기고, Sprint 7의 최신 버전(편집본)을
+  내보내도록 했다. 웹·로컬 양쪽에서 저장할 수 있으며 웹 모드는 `sermon_export` Companion 작업을 쓴다.
+- 마이그레이션 010(비파괴)으로 `sermons`에 obsidian 필드 3종을 추가하고 `local_jobs.job_type`을
+  확장했다.
+- lint·typecheck·단위 테스트(52/52)·production build를 통과했다.
+- 마이그레이션 009·010의 운영 Supabase 적용과 웹 모드 종단 실기기 확인은 사용자 승인 후 진행한다.
+  상세는 `docs/sprints/SPRINT_08.md`.
+
 ## Sprint 9 — 양방향 동기화와 충돌 처리
 
 ### 목표

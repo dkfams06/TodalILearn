@@ -139,6 +139,7 @@ textarea { resize: vertical; }
 .tab-row { display: flex; gap: 0.35rem; flex-wrap: wrap; }
 .tab { padding: 0.4rem 0.85rem; border-radius: 999px; background: #e7e3d8; color: var(--text); font-size: 0.9rem; }
 .tab.active { background: var(--primary); color: white; }
+.detail-bar-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
 .baseline-toggle.on { background: #f2ead6; color: var(--primary); font-weight: 700; }
 
 .sermon-editor { display: grid; gap: 0.85rem; }
