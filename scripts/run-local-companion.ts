@@ -25,6 +25,7 @@ const { readLocalSettings } = await import('../src/lib/local-settings')
 const { createResearchBundle } = await import('../src/lib/research/research')
 const { createSermonDraft } = await import('../src/lib/sermon/generate')
 const { exportSermon } = await import('../src/lib/sermon/export-store')
+const { checkSermonSync } = await import('../src/lib/sermon/sync-store')
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim()
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()
@@ -49,7 +50,7 @@ const { data: device, error: deviceError } = await database
     user_id: user.id,
     device_name: settings.deviceName,
     vault_id: settings.vaultId,
-    capabilities: ['research', 'sermon', 'sermon_export', 'obsidian', 'e5', 'claude-code-subscription'],
+    capabilities: ['research', 'sermon', 'sermon_export', 'sermon_sync', 'obsidian', 'e5', 'claude-code-subscription'],
     companion_version: '0.1.0',
     last_seen_at: new Date().toISOString(),
     revoked_at: null,
@@ -135,6 +136,14 @@ while (!stopping) {
       const payload = job.payload as { sermonId?: unknown }
       if (typeof payload.sermonId !== 'string') throw new Error('설교 ID가 없습니다.')
       result = await exportSermon(database, {
+        sermonId: payload.sermonId,
+        userId: user.id,
+        outputFolder: settings.outputFolder,
+      })
+    } else if (job.job_type === 'sermon_sync') {
+      const payload = job.payload as { sermonId?: unknown }
+      if (typeof payload.sermonId !== 'string') throw new Error('설교 ID가 없습니다.')
+      result = await checkSermonSync(database, {
         sermonId: payload.sermonId,
         userId: user.id,
         outputFolder: settings.outputFolder,

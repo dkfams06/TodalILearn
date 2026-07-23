@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 
+import { SermonDiff } from '@/components/sermon-diff'
 import { SermonEditor } from '@/components/sermon-editor'
 import { SermonEvaluationForm } from '@/components/sermon-evaluation-form'
 import { SermonVersionHistory } from '@/components/sermon-version-history'
@@ -13,8 +14,21 @@ import type {
   SermonEvaluation,
   SermonExportJobResponse,
   SermonExportResultPayload,
+  SermonSyncJobResponse,
+  SermonSyncOutcome,
+  SermonSyncResolveOutcome,
   SermonVersion,
 } from '@/lib/sermon/types'
+import { currentVersion } from '@/lib/sermon/version-utils'
+
+type ConflictState = NonNullable<SermonSyncOutcome['conflict']>
+
+const SYNC_MESSAGES: Record<Exclude<SermonSyncOutcome['status'], 'conflict'>, string> = {
+  unchanged: '동기화 상태가 정상입니다.',
+  pushed_to_local: '서버의 최신 내용을 옵시디언 파일에 반영했습니다.',
+  pulled_from_local: '옵시디언에서 수정한 내용을 새 버전으로 가져왔습니다.',
+  local_file_missing: '옵시디언 파일을 찾을 수 없습니다. 필요하면 "옵시디언에 저장"으로 다시 만드세요.',
+}
 
 type Tab = 'view' | 'edit' | 'history' | 'eval'
 
@@ -44,6 +58,11 @@ export function SavedSermonsPanel() {
   const [baselineWorking, setBaselineWorking] = useState(false)
   const [exportWorking, setExportWorking] = useState(false)
   const [exportError, setExportError] = useState<string | null>(null)
+  const [syncWorking, setSyncWorking] = useState(false)
+  const [syncMessage, setSyncMessage] = useState<string | null>(null)
+  const [syncError, setSyncError] = useState<string | null>(null)
+  const [conflict, setConflict] = useState<ConflictState | null>(null)
+  const [resolveWorking, setResolveWorking] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -80,6 +99,9 @@ export function SavedSermonsPanel() {
     setSelectedId(id)
     setTab('view')
     setExportError(null)
+    setSyncMessage(null)
+    setSyncError(null)
+    setConflict(null)
     try {
       const response = await fetch(`/api/sermons/${id}`)
       const body = await readJsonResponse<SavedSermon | { error?: string }>(response)
@@ -100,7 +122,7 @@ export function SavedSermonsPanel() {
     setSelected((current) => current && ({
       ...current,
       versions,
-      latestMarkdown: versions[versions.length - 1]?.content ?? current.latestMarkdown,
+      latestMarkdown: currentVersion(versions)?.content ?? current.latestMarkdown,
     }))
   }
 
@@ -137,22 +159,111 @@ export function SavedSermonsPanel() {
     }) : item))
   }
 
+  async function performExport(): Promise<SermonExportResultPayload> {
+    if (!selected) throw new Error('선택된 설교가 없습니다.')
+    const response = await fetch(`/api/sermons/${selected.id}/export`, { method: 'POST' })
+    const body = await readJsonResponse<SermonExportResultPayload | SermonExportJobResponse | { error?: string }>(response)
+    if (!response.ok) throw new Error(getResponseError(body, '옵시디언에 저장하지 못했습니다.'))
+    return response.status === 202 && 'jobId' in body
+      ? await waitForExportJob(body.jobId)
+      : body as SermonExportResultPayload
+  }
+
   async function exportToObsidian() {
     if (!selected) return
     setExportWorking(true)
     setExportError(null)
     try {
-      const response = await fetch(`/api/sermons/${selected.id}/export`, { method: 'POST' })
-      const body = await readJsonResponse<SermonExportResultPayload | SermonExportJobResponse | { error?: string }>(response)
-      if (!response.ok) throw new Error(getResponseError(body, '옵시디언에 저장하지 못했습니다.'))
-      const outcome = response.status === 202 && 'jobId' in body
-        ? await waitForExportJob(body.jobId)
-        : body as SermonExportResultPayload
+      const outcome = await performExport()
       applyExportOutcome(selected.id, outcome)
+      setConflict(null)
     } catch (exportRequestError) {
       setExportError(exportRequestError instanceof Error ? exportRequestError.message : '옵시디언에 저장하지 못했습니다.')
     } finally {
       setExportWorking(false)
+    }
+  }
+
+  async function waitForSyncJob(jobId: string) {
+    for (let attempt = 0; attempt < 150; attempt += 1) {
+      await new Promise((resolve) => window.setTimeout(resolve, 2_000))
+      const response = await fetch(`/api/jobs/${jobId}`)
+      const job = await readJsonResponse<SermonSyncJobResponse | { error?: string }>(response)
+      if (!response.ok || !('status' in job)) {
+        throw new Error(getResponseError(job, '작업 상태를 확인하지 못했습니다.'))
+      }
+      if (job.status === 'succeeded' && job.result) return job.result
+      if (job.status === 'failed' || job.status === 'cancelled') {
+        throw new Error(job.error || 'Windows PC에서 작업을 완료하지 못했습니다.')
+      }
+    }
+    throw new Error('작업 대기 시간이 초과되었습니다.')
+  }
+
+  async function checkSync() {
+    if (!selected) return
+    const sermonId = selected.id
+    setSyncWorking(true)
+    setSyncError(null)
+    setSyncMessage(null)
+    try {
+      const response = await fetch(`/api/sermons/${sermonId}/sync`, { method: 'POST' })
+      const body = await readJsonResponse<SermonSyncOutcome | SermonSyncJobResponse | { error?: string }>(response)
+      if (!response.ok) throw new Error(getResponseError(body, '옵시디언 변경사항을 확인하지 못했습니다.'))
+      const outcome = response.status === 202 && 'jobId' in body
+        ? await waitForSyncJob(body.jobId)
+        : body as SermonSyncOutcome
+
+      applyVersions(outcome.versions)
+      if (outcome.syncedAt) {
+        setSelected((current) => current && current.id === sermonId ? ({ ...current, obsidianSyncedAt: outcome.syncedAt }) : current)
+        setSermons((current) => current.map((item) => item.id === sermonId ? ({ ...item, obsidianSyncedAt: outcome.syncedAt }) : item))
+      }
+
+      if (outcome.status === 'conflict') {
+        if (outcome.conflict) setConflict(outcome.conflict)
+      } else {
+        setConflict(null)
+        setSyncMessage(SYNC_MESSAGES[outcome.status])
+      }
+    } catch (syncRequestError) {
+      setSyncError(syncRequestError instanceof Error ? syncRequestError.message : '옵시디언 변경사항을 확인하지 못했습니다.')
+    } finally {
+      setSyncWorking(false)
+    }
+  }
+
+  async function resolveKeepServer() {
+    if (!selected) return
+    setResolveWorking(true)
+    setSyncError(null)
+    try {
+      const outcome = await performExport()
+      applyExportOutcome(selected.id, outcome)
+      setConflict(null)
+      setSyncMessage('서버 버전을 유지하고 옵시디언 파일을 갱신했습니다.')
+    } catch (resolveError) {
+      setSyncError(resolveError instanceof Error ? resolveError.message : '충돌을 해결하지 못했습니다.')
+    } finally {
+      setResolveWorking(false)
+    }
+  }
+
+  async function resolveUseLocal() {
+    if (!selected) return
+    setResolveWorking(true)
+    setSyncError(null)
+    try {
+      const response = await fetch(`/api/sermons/${selected.id}/sync/resolve`, { method: 'POST' })
+      const body = await readJsonResponse<SermonSyncResolveOutcome | { error?: string }>(response)
+      if (!response.ok || !('versions' in body)) throw new Error(getResponseError(body, '충돌을 해결하지 못했습니다.'))
+      applyVersions(body.versions)
+      setConflict(null)
+      setSyncMessage('로컬 파일 내용을 채택했습니다.')
+    } catch (resolveError) {
+      setSyncError(resolveError instanceof Error ? resolveError.message : '충돌을 해결하지 못했습니다.')
+    } finally {
+      setResolveWorking(false)
     }
   }
 
@@ -241,6 +352,15 @@ export function SavedSermonsPanel() {
                           {exportWorking ? '저장 중…' : '옵시디언에 저장'}
                         </button>
                         <button
+                          className="secondary"
+                          disabled={syncWorking || !selected.obsidianRelativePath}
+                          onClick={() => void checkSync()}
+                          title={selected.obsidianRelativePath ? undefined : '먼저 옵시디언에 저장해야 확인할 수 있습니다.'}
+                          type="button"
+                        >
+                          {syncWorking ? '확인 중…' : '옵시디언 변경사항 확인'}
+                        </button>
+                        <button
                           className={`secondary baseline-toggle${selected.isBaseline ? ' on' : ''}`}
                           disabled={baselineWorking}
                           onClick={() => void toggleBaseline()}
@@ -255,6 +375,33 @@ export function SavedSermonsPanel() {
                       <p className="success-message">옵시디언 폴더에 저장됨 · {selected.obsidianRelativePath}</p>
                     ) : null}
                     {exportError ? <p className="error-message">{exportError}</p> : null}
+                    {!conflict && syncMessage ? <p className="success-message">{syncMessage}</p> : null}
+                    {syncError ? <p className="error-message">{syncError}</p> : null}
+
+                    {conflict ? (
+                      <div className="conflict-banner">
+                        <h4>충돌 감지</h4>
+                        <p className="muted">
+                          옵시디언 파일과 서버가 마지막 동기화 이후 각각 수정되었습니다. 로컬 파일
+                          내용은 이미 버전 이력에 안전하게 백업되었으니, 어느 쪽을 대표 버전으로 할지
+                          선택해 주세요.
+                        </p>
+                        <SermonDiff after={conflict.backupVersion.content} before={conflict.currentVersion.content} />
+                        <div className="form-actions">
+                          <button disabled={resolveWorking} onClick={() => void resolveKeepServer()} type="button">
+                            {resolveWorking ? '처리 중…' : '서버 버전 유지'}
+                          </button>
+                          <button
+                            className="secondary"
+                            disabled={resolveWorking}
+                            onClick={() => void resolveUseLocal()}
+                            type="button"
+                          >
+                            {resolveWorking ? '처리 중…' : '로컬 파일 내용 채택'}
+                          </button>
+                        </div>
+                      </div>
+                    ) : null}
 
                     {tab === 'view' ? <SermonView sermon={selected.draft} /> : null}
                     {tab === 'edit' ? (
@@ -277,7 +424,7 @@ export function SavedSermonsPanel() {
                         evaluations={selected.evaluations}
                         onEvaluated={applyEvaluations}
                         sermonId={selected.id}
-                        versionNumber={selected.versions[selected.versions.length - 1]?.versionNumber ?? null}
+                        versionNumber={currentVersion(selected.versions)?.versionNumber ?? null}
                       />
                     ) : null}
                   </div>

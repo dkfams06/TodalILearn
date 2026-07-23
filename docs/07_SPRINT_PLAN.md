@@ -323,7 +323,8 @@ Vercel 화면과 항상 켜진 메인 Windows PC를 작업 큐로 연결한다. 
 - 마이그레이션 010(비파괴)으로 `sermons`에 obsidian 필드 3종을 추가하고 `local_jobs.job_type`을
   확장했다.
 - lint·typecheck·단위 테스트(52/52)·production build를 통과했다.
-- 마이그레이션 009·010의 운영 Supabase 적용과 웹 모드 종단 실기기 확인은 사용자 승인 후 진행한다.
+- 마이그레이션 009·010은 2026-07-23 운영 Supabase에 적용하고 스키마를 검증했다. 웹 모드 종단
+  실기기 확인은 메인 Windows PC Companion을 다시 실행한 뒤 진행한다.
   상세는 `docs/sprints/SPRINT_08.md`.
 
 ## Sprint 9 — 양방향 동기화와 충돌 처리
@@ -348,6 +349,39 @@ Vercel 화면과 항상 켜진 메인 Windows PC를 작업 큐로 연결한다. 
 - 충돌 양쪽 버전 복구 가능
 - 같은 Vault의 동일 상대경로가 중복 문서가 되지 않음
 - 수정 출처가 `sermon_versions`에 기록됨
+
+### 구현 기록 — 2026-07-23
+
+- 새 테이블 없이 Sprint 7의 `sermon_versions.source`(`obsidian`·`conflict_backup`)와 Sprint 8의
+  `sermons.obsidian_content_hash`(마지막 합의 상태 마커)를 재사용해 양방향 동기화를 구현했다.
+- 세 해시(마커·파일·서버 대표 버전) 비교로 `unchanged`/`push`/`pull`/`conflict`를 판정한다
+  (`classifySyncState`). 대표 버전은 `currentVersion()`으로 `conflict_backup`을 제외해 계산한다.
+- 충돌 시 파일 내용을 즉시 `conflict_backup`으로 백업하고 마커는 그대로 두어, 사용자가 "서버 버전
+  유지"(기존 export 재사용)·"로컬 파일 내용 채택"(신규 DB 전용 라우트) 중 하나를 고를 때까지
+  자동 병합하지 않는다.
+- 트리거는 수동 "옵시디언 변경사항 확인" 버튼이며, 마이그레이션 011(비파괴)로 `sermon_sync`
+  Companion 작업을 추가했다.
+- 단위 테스트 작성 중 `classifySyncState`의 push/pull 조건이 뒤바뀐 버그를 발견해 구현 단계에서
+  수정했다.
+- lint·typecheck·단위 테스트(63/63)·production build를 통과했다.
+- 복수 Windows PC 실 기기 테스트는 현재 단일 메인 PC 아키텍처상 범위에서 제외했다. 마이그레이션
+  011은 2026-07-23 운영 적용·검증했고, push/pull/conflict 실기기 재현은 메인 Windows PC
+  Companion을 다시 실행한 뒤 진행한다. 상세는
+  `docs/sprints/SPRINT_09.md`.
+
+## Sprint 9.5 — 연구 묶음 영속화
+
+### 목표
+
+좋은 연구 결과를 설교 생성 여부와 관계없이 보존하고 다시 활용한다.
+
+### 구현 기록 — 2026-07-23
+
+- 마이그레이션 012로 사용자별 `research_bundles` 저장소를 추가했다.
+- 연구 완료 직후 전체 묶음을 자동 저장하고 최근 50개 질문·핵심 메시지를 표시한다.
+- 저장된 연구를 열면 본문·연결·적용·주의점·출처·자료 선택 상태가 복원되며 바로 설교 생성에
+  재사용할 수 있다.
+- 배포 전 생성된 최신 성공 연구 1건도 운영 저장소로 이관해 복원 검증을 마쳤다.
 
 ## Sprint 10 — 운영 안정화와 Windows 사용성
 

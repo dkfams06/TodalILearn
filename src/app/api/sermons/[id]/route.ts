@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server'
 import { getCurrentUser } from '@/lib/auth/session'
 import { listEvaluations } from '@/lib/sermon/evaluation-store'
 import type { SavedSermon } from '@/lib/sermon/types'
+import { currentVersion } from '@/lib/sermon/version-utils'
 import { ensureVersions } from '@/lib/sermon/version-store'
 import { createAdminClient } from '@/lib/supabase/admin'
 
@@ -48,7 +49,7 @@ export async function GET(_request: Request, context: RouteContext<'/api/sermons
       }),
       listEvaluations(admin, row.id),
     ])
-    const latestMarkdown = versions[versions.length - 1]?.content ?? ''
+    const latestMarkdown = currentVersion(versions)?.content ?? ''
 
     const sermon: SavedSermon = {
       id: row.id,

@@ -10,6 +10,8 @@ import type {
   ResearchBundle,
   ResearchKnowledgeSource,
   ResearchSopSource,
+  SavedResearchBundle,
+  SavedResearchSummary,
 } from '@/lib/research/types'
 import type { SermonDraft, SermonExportJobResponse, SermonExportResultPayload, SermonJobResponse } from '@/lib/sermon/types'
 
@@ -97,12 +99,67 @@ export function ResearchPanel() {
   const [sermonSaved, setSermonSaved] = useState(false)
   const [exportPath, setExportPath] = useState<string | null>(null)
   const [exportError, setExportError] = useState<string | null>(null)
+  const [savedResearches, setSavedResearches] = useState<SavedResearchSummary[]>([])
+  const [activeResearchId, setActiveResearchId] = useState<string | null>(null)
+  const [researchSaveMessage, setResearchSaveMessage] = useState<string | null>(null)
+
+  async function loadSavedResearches() {
+    const response = await fetch('/api/researches', { cache: 'no-store' })
+    const body = await readJsonResponse<{ researches?: SavedResearchSummary[]; error?: string }>(response)
+    if (!response.ok || !body.researches) {
+      throw new Error(getResponseError(body, '저장된 연구를 불러오지 못했습니다.'))
+    }
+    setSavedResearches(body.researches)
+  }
+
+  function showResearchBundle(bundle: ResearchBundle, savedId: string | null = null) {
+    setQuery(bundle.query)
+    setPersonalContext(bundle.personalContext)
+    setResult(bundle)
+    setActiveResearchId(savedId)
+    setSermon(null)
+    setSermonError(null)
+    setSelection({
+      knowledge: new Set(bundle.knowledgeSources.filter((source) => source.selected).map((source) => source.id)),
+      sop: new Set(bundle.sopSources.filter((source) => source.selected).map((source) => source.id)),
+    })
+  }
+
+  async function saveCompletedResearch(bundle: ResearchBundle) {
+    const response = await fetch('/api/researches', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ bundle }),
+    })
+    const body = await readJsonResponse<SavedResearchBundle | { error?: string }>(response)
+    if (!response.ok || !('id' in body)) {
+      throw new Error(getResponseError(body, '연구 묶음을 저장하지 못했습니다.'))
+    }
+    setActiveResearchId(body.id)
+    setResearchSaveMessage('연구 묶음이 자동 저장됐습니다.')
+    await loadSavedResearches()
+  }
+
+  async function openSavedResearch(id: string) {
+    setError(null)
+    try {
+      const response = await fetch(`/api/researches/${id}`, { cache: 'no-store' })
+      const body = await readJsonResponse<SavedResearchBundle | { error?: string }>(response)
+      if (!response.ok || !('bundle' in body)) {
+        throw new Error(getResponseError(body, '저장된 연구를 열지 못했습니다.'))
+      }
+      showResearchBundle(body.bundle, body.id)
+      setResearchSaveMessage('저장된 연구 묶음을 열었습니다.')
+    } catch (openError) {
+      setError(openError instanceof Error ? openError.message : '저장된 연구를 열지 못했습니다.')
+    }
+  }
 
   useEffect(() => {
     let cancelled = false
     async function loadDevices() {
       try {
-        const response = await fetch('/api/devices')
+        const response = await fetch('/api/devices', { cache: 'no-store' })
         const body = await readJsonResponse<{
           mode: ExecutionMode
           devices: CompanionDevice[]
@@ -116,7 +173,22 @@ export function ResearchPanel() {
         if (!cancelled) setError(deviceError instanceof Error ? deviceError.message : 'PC 상태를 확인하지 못했습니다.')
       }
     }
+    async function loadResearches() {
+      try {
+        const response = await fetch('/api/researches', { cache: 'no-store' })
+        const body = await readJsonResponse<{ researches?: SavedResearchSummary[]; error?: string }>(response)
+        if (!response.ok || !body.researches) {
+          throw new Error(getResponseError(body, '저장된 연구를 불러오지 못했습니다.'))
+        }
+        if (!cancelled) setSavedResearches(body.researches)
+      } catch (loadError) {
+        if (!cancelled) {
+          setError(loadError instanceof Error ? loadError.message : '저장된 연구를 불러오지 못했습니다.')
+        }
+      }
+    }
     void loadDevices()
+    void loadResearches()
     const interval = window.setInterval(() => void loadDevices(), 15_000)
     return () => {
       cancelled = true
@@ -165,13 +237,14 @@ export function ResearchPanel() {
       const bundle = response.status === 202 && 'jobId' in body
         ? await waitForJob<ResearchBundle>(body.jobId)
         : body as ResearchBundle
-      setResult(bundle)
-      setSermon(null)
-      setSermonError(null)
-      setSelection({
-        knowledge: new Set(bundle.knowledgeSources.filter((source) => source.selected).map((source) => source.id)),
-        sop: new Set(bundle.sopSources.filter((source) => source.selected).map((source) => source.id)),
-      })
+      showResearchBundle(bundle)
+      try {
+        await saveCompletedResearch(bundle)
+      } catch (saveError) {
+        setResearchSaveMessage(
+          saveError instanceof Error ? `자동 저장 실패: ${saveError.message}` : '연구 묶음을 자동 저장하지 못했습니다.',
+        )
+      }
     } catch (researchError) {
       setError(researchError instanceof Error ? researchError.message : '연구 묶음을 만들지 못했습니다.')
     } finally {
@@ -301,6 +374,36 @@ export function ResearchPanel() {
       </form>
 
       {error ? <p className="error-message">{error}</p> : null}
+      <section className="saved-research">
+        <div className="section-heading">
+          <div>
+            <h3>저장된 연구 묶음</h3>
+            <p className="muted">설교를 만들지 않아도 완료된 연구는 자동으로 저장됩니다.</p>
+          </div>
+        </div>
+        {savedResearches.length > 0 ? (
+          <ul className="saved-sermon-list">
+            {savedResearches.map((saved) => (
+              <li key={saved.id}>
+                <button
+                  className={`saved-sermon-item${activeResearchId === saved.id ? ' active' : ''}`}
+                  onClick={() => void openSavedResearch(saved.id)}
+                  type="button"
+                >
+                  <strong>{saved.query}</strong>
+                  <small>{saved.coreMessage}</small>
+                  <small>{new Date(saved.createdAt).toLocaleString('ko-KR')} · {saved.inputType}</small>
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : <p className="muted">아직 저장된 연구가 없습니다.</p>}
+        {researchSaveMessage ? (
+          <p className={researchSaveMessage.startsWith('자동 저장 실패') ? 'error-message' : 'success-message'}>
+            {researchSaveMessage}
+          </p>
+        ) : null}
+      </section>
       {result ? (
         <div className="research-output">
           <section className="core-message">

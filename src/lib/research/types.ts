@@ -68,3 +68,17 @@ export type ResearchRequest = {
   selectedKnowledgeIds?: string[]
   selectedSopIds?: string[]
 }
+
+export type SavedResearchSummary = {
+  id: string
+  query: string
+  coreMessage: string
+  inputType: ResearchBundle['inputType']
+  createdAt: string
+}
+
+export type SavedResearchBundle = {
+  id: string
+  createdAt: string
+  bundle: ResearchBundle
+}

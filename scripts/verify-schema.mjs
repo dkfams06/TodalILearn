@@ -24,7 +24,10 @@ const expectedTables = [
   'sop_chunks',
   'sop_chunk_embeddings',
   'family_worship_sermons',
+  'sermons',
   'sermon_versions',
+  'sermon_evaluations',
+  'research_bundles',
 ]
 
 let failed = false
@@ -67,6 +70,30 @@ if (resourceMetadataError) {
   console.error(`knowledge_resources Sprint 3 columns: ERROR ${resourceMetadataError.message}`)
 } else {
   console.log('knowledge_resources Sprint 3 columns: OK')
+}
+
+const { error: sermonMetadataError } = await supabase
+  .from('sermons')
+  .select('id,is_baseline,obsidian_relative_path,obsidian_synced_at,obsidian_content_hash')
+  .limit(1)
+
+if (sermonMetadataError) {
+  failed = true
+  console.error(`sermons Sprint 7-9 columns: ERROR ${sermonMetadataError.message}`)
+} else {
+  console.log('sermons Sprint 7-9 columns: OK')
+}
+
+const { error: sermonVersionMetadataError } = await supabase
+  .from('sermon_versions')
+  .select('id,sermon_id,user_id,version_number,source,content,content_hash,edit_reasons,note,created_at')
+  .limit(1)
+
+if (sermonVersionMetadataError) {
+  failed = true
+  console.error(`sermon_versions Sprint 7-9 columns: ERROR ${sermonVersionMetadataError.message}`)
+} else {
+  console.log('sermon_versions Sprint 7-9 columns: OK')
 }
 
 const { data: providerRows, error: providerError } = await supabase

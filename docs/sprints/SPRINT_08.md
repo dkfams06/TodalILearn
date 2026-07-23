@@ -1,6 +1,6 @@
 # Sprint 8 — 옵시디언 완성본 저장
 
-상태: In Progress (구현 완료, 운영 DB 적용 대기)
+상태: In Progress (구현·운영 DB 적용 완료, 실기기 검증 대기)
 
 ## 목표
 
@@ -39,8 +39,7 @@ local_jobs.job_type check 확장: research | sermon | sermon_export
 `{연도}/{YYYY-MM-DD} {정규화 제목}.md`를 계산하고, 다른 설교가 같은 이름을 이미 쓰면
 ` (2)`로 회피한다.
 
-운영 Supabase 적용은 사용자 확인 후 진행한다. **마이그레이션 009도 아직 미적용이므로 009·010을
-함께 적용해야 한다.**
+마이그레이션 009·010은 2026-07-23 운영 Supabase에 적용하고 스키마를 검증했다.
 
 ## 구현 순서
 
@@ -97,9 +96,8 @@ local_jobs.job_type check 확장: research | sermon | sermon_export
 
 ## 미완료 / 후속 범위
 
-- 마이그레이션 009·010의 운영 Supabase 적용은 사용자 확인 후 진행한다.
 - 웹 모드 종단 확인(다른 브라우저에서 저장 요청 → 메인 PC Companion이 실제로 파일을 씀)은
-  운영 적용 후 수동으로 재현한다.
+  메인 Windows PC에서 수동으로 재현한다.
 - 양방향 동기화(옵시디언 쪽 수정 반영, 충돌 처리)는 Sprint 9에서 다룬다.
 
 ## 롤백

@@ -4,6 +4,7 @@ import type { createAdminClient } from '@/lib/supabase/admin'
 
 import { exportSermonToObsidian } from './obsidian-export'
 import type { SermonDraft } from './types'
+import { currentVersion } from './version-utils'
 import { ensureVersions, hashContent } from './version-store'
 
 type AdminClient = ReturnType<typeof createAdminClient>
@@ -38,14 +39,15 @@ export async function exportSermon(
 
   const sermon = data as SermonRow
   const createdAt = new Date(sermon.created_at)
-  // 최신 버전을 완성본으로 저장한다. 버전이 없는 레거시 설교는 draft로 버전 1을 지연 생성한다.
+  // 대표 버전(conflict_backup 제외 최신본)을 완성본으로 저장한다. 버전이 없는 레거시 설교는
+  // draft로 버전 1을 지연 생성한다.
   const versions = await ensureVersions(admin, {
     sermonId: sermon.id,
     userId: input.userId,
     draft: sermon.draft,
     createdAt,
   })
-  const markdown = versions[versions.length - 1]?.content ?? ''
+  const markdown = currentVersion(versions)?.content ?? ''
   if (!markdown.trim()) throw new Error('저장할 설교 본문이 없습니다.')
 
   const result = await exportSermonToObsidian({

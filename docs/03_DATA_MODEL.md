@@ -273,9 +273,16 @@ unique(sermon_id, version_number)
 ```text
 ai_generation      생성 직후 버전 1
 web                웹 편집본(복원 포함)
-obsidian           옵시디언 수정본(Sprint 9 양방향 동기화에서 사용)
-conflict_backup    충돌 백업(Sprint 9 양방향 동기화에서 사용)
+obsidian           옵시디언 파일에서 가져온 버전. 파일 직접 수정 감지(pull) 또는 충돌 해결 시
+                   "로컬 파일 내용 채택"으로 생성된다(Sprint 9)
+conflict_backup    옵시디언 파일과 서버가 동시에 수정된 시점의 파일 내용 백업(Sprint 9).
+                   "대표 버전"(conflict_backup이 아닌 최신 버전) 계산에서 제외된다
 ```
+
+"대표 버전"은 `src/lib/sermon/version-utils.ts`의 `currentVersion()`으로 계산하며, 편집·옵시디언
+저장·동기화 비교가 모두 이 함수를 공유한다. `sermons.obsidian_content_hash`(Sprint 8)는 Sprint 9에서
+"마지막으로 합의된 상태"로 재사용되어, 옵시디언 파일과 대표 버전 중 어느 쪽이 마지막 동기화 이후
+바뀌었는지 판정하는 기준이 된다.
 
 버전 1은 설교 저장 시 `draft`를 Markdown으로 변환해 생성한다. 마이그레이션 009 이전에 저장된
 설교는 최초 조회 시 버전 1을 지연 생성한다.
@@ -296,6 +303,23 @@ created_at timestamptz
 ```
 
 `scores`는 `docs/05_EVALUATION_PLAN.md`의 12개 항목 키를 가진다.
+
+## `research_bundles` (연구 묶음 저장)
+
+설교 생성 여부와 관계없이 완성된 연구 결과를 다시 열람하고 재사용하기 위한 저장소다
+(마이그레이션 012).
+
+```text
+id uuid PK
+user_id uuid NOT NULL FK -> auth.users.id
+query, personal_context, input_type, core_message
+bundle jsonb NOT NULL
+provider, model, prompt_version
+created_at, updated_at
+```
+
+연구 완료 직후 자동 저장한다. 최근 목록에서 질문과 핵심 메시지를 보여주며, 다시 열면 성경 본문,
+자료 연결, 관계 적용, 주의점, 옵시디언·예언의 신 출처와 선택 상태를 모두 복원한다.
 
 ## 구조화 JSON 계약
 

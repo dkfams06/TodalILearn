@@ -1,6 +1,6 @@
 # Sprint 7 — 편집, 버전, 평가, 기준 설교 축적
 
-상태: In Progress (구현 완료, 사용자 평가·운영 DB 적용 대기)
+상태: In Progress (구현·운영 DB 적용 완료, 사용자 평가 대기)
 
 ## 목표
 
@@ -98,6 +98,9 @@ RLS enable + service_role만 grant(기존 `sermons`와 동일 패턴). 접근은
 
 ## 미완료 / 후속 범위
 
+- 마이그레이션 009는 2026-07-23 운영 DB에 적용했다. Sprint 1의 동명 구형
+  `sermon_versions`가 먼저 존재해 새 계약을 건너뛴 문제를 발견했고, 누락 컬럼과
+  `public.sermons` 외래키를 재실행 가능한 SQL로 보정했다.
 - "선택 자료로 재생성"은 연구 묶음 영속화가 선행되어야 한다. 후속 작업으로 둔다.
 - 대표 주제 5편 사용자 평가와 `minor_edit` 비율은 운영 데이터로 사용자가 채운다.
 - Companion service role → 장치 토큰 교체(Sprint 5.5 이월)는 유지.

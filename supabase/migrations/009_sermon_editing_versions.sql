@@ -18,6 +18,44 @@ create table if not exists public.sermon_versions (
   unique (sermon_id, version_number)
 );
 
+-- Sprint 1의 family_worship_sermons용 구형 테이블도 같은 이름을 사용했다.
+-- 테이블이 이미 있으면 create table if not exists가 새 컬럼과 FK를 추가하지 않으므로,
+-- Sprint 7 계약으로 안전하게 수렴하도록 누락 컬럼과 제약을 명시적으로 보정한다.
+alter table public.sermon_versions
+  add column if not exists user_id uuid,
+  add column if not exists edit_reasons jsonb not null default '[]'::jsonb,
+  add column if not exists note text;
+
+update public.sermon_versions as version
+set user_id = sermon.user_id
+from public.sermons as sermon
+where version.sermon_id = sermon.id
+  and version.user_id is null;
+
+do $$
+begin
+  if exists (
+    select 1
+    from public.sermon_versions
+    where user_id is null
+  ) then
+    raise exception
+      '구형 sermon_versions 행을 public.sermons와 연결하지 못했습니다. 수동 이관이 필요합니다.';
+  end if;
+end
+$$;
+
+alter table public.sermon_versions
+  alter column user_id set not null,
+  drop constraint if exists sermon_versions_sermon_id_fkey,
+  drop constraint if exists sermon_versions_user_id_fkey;
+
+alter table public.sermon_versions
+  add constraint sermon_versions_sermon_id_fkey
+    foreign key (sermon_id) references public.sermons(id) on delete cascade,
+  add constraint sermon_versions_user_id_fkey
+    foreign key (user_id) references auth.users(id) on delete cascade;
+
 create index if not exists sermon_versions_sermon_idx
   on public.sermon_versions (sermon_id, version_number desc);
 

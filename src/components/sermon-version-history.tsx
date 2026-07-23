@@ -6,6 +6,7 @@ import { SermonDiff } from '@/components/sermon-diff'
 import { getResponseError, readJsonResponse } from '@/lib/http/client'
 import { EDIT_REASON_TAGS } from '@/lib/sermon/evaluation'
 import type { EditReasonTag, SermonVersion } from '@/lib/sermon/types'
+import { currentVersion } from '@/lib/sermon/version-utils'
 
 const SOURCE_LABELS: Record<SermonVersion['source'], string> = {
   ai_generation: 'AI 생성',
@@ -36,9 +37,12 @@ export function SermonVersionHistory({
   versions: SermonVersion[]
   onChanged: (versions: SermonVersion[]) => void
 }) {
-  const latest = versions[versions.length - 1]
+  // "현재 버전" 배지는 conflict_backup을 제외한 대표 버전을 기준으로 판정한다.
+  // 충돌 백업이 버전 번호상 최신이어도 대표 버전으로 오인 표시하지 않는다.
+  const latest = currentVersion(versions)
   const latestNumber = latest?.versionNumber ?? 1
-  const previousNumber = versions.length > 1 ? versions[versions.length - 2].versionNumber : latestNumber
+  const latestIndex = versions.findIndex((version) => version.versionNumber === latestNumber)
+  const previousNumber = latestIndex > 0 ? versions[latestIndex - 1].versionNumber : latestNumber
 
   const [baseNumber, setBaseNumber] = useState(previousNumber)
   const [targetNumber, setTargetNumber] = useState(latestNumber)

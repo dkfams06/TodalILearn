@@ -158,3 +158,29 @@ export type SermonExportJobResponse = {
   result?: SermonExportResultPayload
   error?: string
 }
+
+export type SermonSyncStatus =
+  | 'unchanged'
+  | 'pushed_to_local'
+  | 'pulled_from_local'
+  | 'conflict'
+  | 'local_file_missing'
+
+export type SermonSyncOutcome = {
+  status: SermonSyncStatus
+  relativePath: string
+  syncedAt: string | null
+  versions: SermonVersion[]
+  conflict?: { currentVersion: SermonVersion; backupVersion: SermonVersion }
+}
+
+export type SermonSyncJobResponse = {
+  jobId: string
+  status: 'queued' | 'running' | 'succeeded' | 'failed' | 'cancelled'
+  result?: SermonSyncOutcome
+  error?: string
+}
+
+export type SermonSyncResolveOutcome = {
+  versions: SermonVersion[]
+}

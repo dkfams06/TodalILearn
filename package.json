@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "companion": "tsx scripts/run-local-companion.ts",
+    "companion": "node --conditions=react-server --import tsx scripts/run-local-companion.ts",
     "companion:verify": "tsx scripts/verify-local-companion.ts",
     "companion:install-autostart": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/install-companion-autostart.ps1",
     "companion:uninstall-autostart": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/uninstall-companion-autostart.ps1",
@@ -46,6 +46,7 @@
     "onnxruntime-node": "1.21.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
+    "server-only": "^0.0.1",
     "yaml": "^2.9.0"
   },
   "devDependencies": {

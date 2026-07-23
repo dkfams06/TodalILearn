@@ -14,6 +14,7 @@ const nextConfig: NextConfig = {
       'node_modules/@img/**',
     ],
     '/api/research': ['./next.config.ts'],
+    '/api/sermon': ['./next.config.ts'],
     '/api/devices': ['./next.config.ts'],
     '/api/jobs/[id]': ['./next.config.ts'],
     '/api/settings': ['./next.config.ts'],
