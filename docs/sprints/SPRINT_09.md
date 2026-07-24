@@ -1,6 +1,6 @@
 # Sprint 9 — 양방향 동기화와 충돌 처리
 
-상태: In Progress (구현·운영 DB 적용 완료, 실기기 검증 대기)
+상태: Complete (2026-07-24)
 
 ## 목표
 
@@ -111,9 +111,25 @@ S = hash(현재 서버 대표 버전)         conflict_backup이 아닌 최신 �
 
 - 마이그레이션 011은 2026-07-23 운영 Supabase에 적용하고 `sermon_sync` check constraint를
   직접 조회해 검증했다.
-- 실제 옵시디언 파일을 직접 수정한 뒤 push/pull/conflict 세 경로를 실기기로 재현하는 수동 검증은
-  메인 Windows PC의 Companion과 Obsidian을 사용해 진행한다.
 - 두 번째 Windows PC를 연결하는 실제 멀티 PC 검증은 해당 아키텍처가 다시 채택될 때 재검토한다.
+
+## 실기기 검증 — 2026-07-24
+
+메인 Windows PC `DESKTOP-E9MNI3I`와 실제 Obsidian 파일
+`2026/2026-07-21 사랑이 시작되는 자리.md`로 다음 경로를 전부 재현했다.
+
+```text
+최초 export       성공 · 상대경로/해시/시각 기록
+변경 없음         unchanged
+파일만 수정       pulled_from_local · source=obsidian
+서버만 수정       pushed_to_local · 같은 파일 덮어쓰기
+양쪽 수정         conflict · source=conflict_backup 생성, 자동 덮어쓰기 없음
+로컬 내용 채택    conflict_backup → source=obsidian 대표 버전 승격
+서버 버전 유지    conflict_backup을 건너뛴 대표 버전을 파일에 반영
+```
+
+검증 뒤 테스트 주석은 새 복구 버전으로 제거하고 Obsidian 파일을 최초 원고와 같은 내용으로
+되돌렸다. 테스트 중 생성된 서버·로컬 버전과 충돌 백업은 버전 이력에 그대로 보존된다.
 
 ## 롤백
 

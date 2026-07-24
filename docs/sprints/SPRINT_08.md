@@ -1,6 +1,6 @@
 # Sprint 8 — 옵시디언 완성본 저장
 
-상태: In Progress (구현·운영 DB 적용 완료, 실기기 검증 대기)
+상태: Complete (2026-07-24)
 
 ## 목표
 
@@ -96,8 +96,9 @@ local_jobs.job_type check 확장: research | sermon | sermon_export
 
 ## 미완료 / 후속 범위
 
-- 웹 모드 종단 확인(다른 브라우저에서 저장 요청 → 메인 PC Companion이 실제로 파일을 씀)은
-  메인 Windows PC에서 수동으로 재현한다.
+- 2026-07-24 웹 작업 큐 → 메인 Windows PC Companion → 실제 Obsidian 파일 저장을 재현했다.
+  `사랑이 시작되는 자리`가 `2026/2026-07-21 사랑이 시작되는 자리.md`에 생성되고 DB 상대경로와
+  해시가 기록되는 것을 확인했다.
 - 양방향 동기화(옵시디언 쪽 수정 반영, 충돌 처리)는 Sprint 9에서 다룬다.
 
 ## 롤백
