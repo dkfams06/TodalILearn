@@ -39,6 +39,7 @@
 8. [의사결정 기록](./08_DECISIONS.md)
 9. [멀티 PC Local Companion 설계](./09_MULTI_PC_LOCAL_COMPANION.md)
 10. [단일 메인 PC 실행 설계](./10_MAIN_PC_EXECUTION.md)
+11. [운영·백업·복구 안내](./11_OPERATIONS_AND_RECOVERY.md)
 
 ## 문서 상태 표기
 

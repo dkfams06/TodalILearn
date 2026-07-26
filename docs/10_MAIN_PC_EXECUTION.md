@@ -46,10 +46,13 @@ Obsidian 자체 동기화
 ## 운영
 
 - Companion은 Windows 로그인 시 자동 시작한다.
+- `npm run companion:install-autostart`로 등록하고 `npm run companion:verify-autostart`로
+  등록·실행 상태를 확인한다.
 - 중복 실행은 로컬 단일 인스턴스 잠금으로 차단한다.
 - Companion heartbeat가 없으면 Vercel은 작업을 큐에 넣지 않고 메인 PC 오프라인을 표시한다.
 - 실행 중 Companion이 종료되면 stale 작업을 다음 시작 시 다시 대기 상태로 복구한다.
 - Vercel에서는 로컬 경로 입력 폼과 동기화 버튼을 표시하지 않는다.
+- 상세 운영·백업·복구 절차는 `11_OPERATIONS_AND_RECOVERY.md`를 따른다.
 
 ## 완료 기준
 

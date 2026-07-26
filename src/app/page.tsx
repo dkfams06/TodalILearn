@@ -1,6 +1,7 @@
 import { connection } from 'next/server'
 
 import { SettingsForm } from '@/components/settings-form'
+import { OperationsPanel } from '@/components/operations-panel'
 import { ResearchPanel } from '@/components/research-panel'
 import { SavedSermonsPanel } from '@/components/saved-sermons-panel'
 import { SearchPanel } from '@/components/search-panel'
@@ -36,6 +37,8 @@ export default async function HomePage() {
         <ResearchPanel />
 
         <SavedSermonsPanel />
+
+        <OperationsPanel />
 
         {executionMode === 'local' ? <SearchPanel /> : null}
 

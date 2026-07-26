@@ -15,7 +15,7 @@ export async function GET() {
     const user = await getCurrentUser()
     const { data, error } = await createAdminClient()
       .from('local_devices')
-      .select('id,device_name,vault_id,last_seen_at')
+      .select('id,device_name,vault_id,last_seen_at,capabilities,companion_version')
       .eq('user_id', user.id)
       .is('revoked_at', null)
       .order('last_seen_at', { ascending: false, nullsFirst: false })
@@ -27,6 +27,10 @@ export async function GET() {
       deviceName: device.device_name,
       vaultId: device.vault_id,
       lastSeenAt: device.last_seen_at,
+      capabilities: Array.isArray(device.capabilities)
+        ? device.capabilities.filter((item): item is string => typeof item === 'string')
+        : [],
+      companionVersion: device.companion_version,
       online: device.last_seen_at
         ? new Date(device.last_seen_at).getTime() >= onlineThreshold
         : false,

@@ -184,6 +184,32 @@ textarea { resize: vertical; }
 .conflict-banner { display: grid; gap: 0.75rem; border: 1px solid var(--danger); border-radius: 12px; background: #fbf1ef; padding: 1rem 1.1rem; margin: 0.5rem 0 1rem; }
 .conflict-banner h4 { margin: 0; color: var(--danger); }
 
+/* Sprint 10: 운영 상태 */
+.operations-panel .section-heading { align-items: center; }
+.operations-summary { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 1rem; margin-top: 1rem; }
+.device-status { display: flex; align-items: flex-start; gap: 0.8rem; border: 1px solid var(--border); border-radius: 12px; background: white; padding: 1rem; }
+.device-status > div { display: grid; gap: 0.3rem; min-width: 0; }
+.device-status small { color: var(--muted); overflow-wrap: anywhere; }
+.status-dot { flex: 0 0 0.75rem; width: 0.75rem; height: 0.75rem; margin-top: 0.25rem; border-radius: 50%; }
+.status-dot.online { background: #3c8d55; box-shadow: 0 0 0 4px #e4f2e4; }
+.status-dot.offline { background: var(--danger); box-shadow: 0 0 0 4px #f6e2e0; }
+.job-counts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.5rem; margin: 0; }
+.job-counts div { display: grid; place-items: center; border: 1px solid var(--border); border-radius: 10px; background: white; padding: 0.65rem; }
+.job-counts dt { color: var(--muted); font-size: 0.8rem; }
+.job-counts dd { margin: 0.2rem 0 0; font-size: 1.15rem; font-weight: 700; }
+.job-list { display: grid; gap: 0.55rem; margin-top: 1rem; max-height: 30rem; overflow-y: auto; }
+.job-item { display: flex; align-items: center; justify-content: space-between; gap: 1rem; border: 1px solid var(--border); border-radius: 10px; background: white; padding: 0.8rem 0.9rem; }
+.job-item button { flex: 0 0 auto; padding: 0.5rem 0.75rem; }
+.job-main { display: grid; gap: 0.3rem; min-width: 0; }
+.job-main > div { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+.job-main small { color: var(--muted); }
+.job-status { border-radius: 999px; padding: 0.15rem 0.5rem; font-size: 0.75rem; font-weight: 700; }
+.status-queued { background: #f2ead6; color: #7a5a12; }
+.status-running { background: #e5edf6; color: #315e86; }
+.status-succeeded { background: #e4f2e4; color: #1f5130; }
+.status-failed, .status-cancelled { background: #f6e2e0; color: var(--danger); }
+.job-error { margin: 0.2rem 0 0; color: var(--danger); font-size: 0.85rem; overflow-wrap: anywhere; }
+
 @media (max-width: 720px) {
   .app-shell { padding: 1rem; }
   .topbar { align-items: flex-start; }
@@ -191,4 +217,6 @@ textarea { resize: vertical; }
   .grid { grid-template-columns: 1fr; }
   .search-input-row { grid-template-columns: 1fr; }
   .research-columns { grid-template-columns: 1fr; }
+  .operations-summary { grid-template-columns: 1fr; }
+  .job-item { align-items: flex-start; }
 }

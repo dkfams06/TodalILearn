@@ -6,11 +6,34 @@ export type CompanionDevice = {
   vaultId: string
   lastSeenAt: string | null
   online: boolean
+  capabilities?: string[]
+  companionVersion?: string
 }
 
 export type ResearchJobPayload = ResearchRequest
 
 export type LocalJobStatus = 'queued' | 'running' | 'succeeded' | 'failed' | 'cancelled'
+
+export type LocalJobType = 'research' | 'sermon' | 'sermon_export' | 'sermon_sync'
+
+export type LocalJobSummary = {
+  id: string
+  deviceId: string
+  jobType: LocalJobType
+  status: LocalJobStatus
+  attemptCount: number
+  errorMessage: string | null
+  createdAt: string
+  updatedAt: string
+  completedAt: string | null
+}
+
+export type OperationsSnapshot = {
+  generatedAt: string
+  devices: CompanionDevice[]
+  jobs: LocalJobSummary[]
+  counts: Record<LocalJobStatus, number>
+}
 
 export type ResearchJobResponse = {
   jobId: string
