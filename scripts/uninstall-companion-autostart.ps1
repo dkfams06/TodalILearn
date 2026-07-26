@@ -5,7 +5,7 @@ $launcherPath = Join-Path $startupDirectory 'FamilyWorshipSermonAI-Companion.cmd
 
 if (Test-Path -LiteralPath $launcherPath) {
   Remove-Item -LiteralPath $launcherPath -Force
-  Write-Output "Companion 자동 시작을 해제했습니다: $launcherPath"
+  Write-Output "Companion autostart removed: $launcherPath"
 } else {
-  Write-Output '등록된 Companion 자동 시작 파일이 없습니다.'
+  Write-Output 'Companion autostart is not installed.'
 }
