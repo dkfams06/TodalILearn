@@ -1,3 +1,4 @@
+import type { ChatMessage } from '@/lib/chat/types'
 import type { ResearchBundle, ResearchRequest } from '@/lib/research/types'
 
 export type CompanionDevice = {
@@ -14,7 +15,7 @@ export type ResearchJobPayload = ResearchRequest
 
 export type LocalJobStatus = 'queued' | 'running' | 'succeeded' | 'failed' | 'cancelled'
 
-export type LocalJobType = 'research' | 'sermon' | 'sermon_export' | 'sermon_sync'
+export type LocalJobType = 'research' | 'sermon' | 'sermon_export' | 'sermon_sync' | 'chat'
 
 export type LocalJobSummary = {
   id: string
@@ -39,5 +40,12 @@ export type ResearchJobResponse = {
   jobId: string
   status: LocalJobStatus
   result?: ResearchBundle
+  error?: string
+}
+
+export type ChatJobResponse = {
+  jobId: string
+  status: LocalJobStatus
+  result?: ChatMessage
   error?: string
 }

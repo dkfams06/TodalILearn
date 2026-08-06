@@ -37,6 +37,7 @@
     "db:migrate:claude-subscription": "node scripts/apply-migration.mjs supabase/migrations/004_claude_subscription_provider.sql",
     "db:migrate:sprint4": "node scripts/apply-migration.mjs supabase/migrations/005_hybrid_search.sql",
     "db:migrate:sprint5-5": "node scripts/apply-migration.mjs supabase/migrations/006_local_companion_jobs.sql",
+    "db:migrate:chat": "node scripts/apply-migration.mjs supabase/migrations/013_chat_conversations.sql",
     "db:verify": "node scripts/verify-schema.mjs"
   },
   "dependencies": {

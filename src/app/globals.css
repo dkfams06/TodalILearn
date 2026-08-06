@@ -210,6 +210,23 @@ textarea { resize: vertical; }
 .status-failed, .status-cancelled { background: #f6e2e0; color: var(--danger); }
 .job-error { margin: 0.2rem 0 0; color: var(--danger); font-size: 0.85rem; overflow-wrap: anywhere; }
 
+/* Sprint 11: 자료 채팅 */
+.chat-card { display: grid; gap: 1rem; }
+.chat-layout { display: grid; grid-template-columns: minmax(0, 220px) minmax(0, 1fr); gap: 1.25rem; }
+.chat-conversations { border-right: 1px solid var(--border); padding-right: 1rem; max-height: 32rem; overflow-y: auto; }
+.chat-thread-wrap { display: grid; gap: 0.85rem; min-width: 0; }
+.chat-thread { display: grid; gap: 0.75rem; max-height: 28rem; overflow-y: auto; padding-right: 0.25rem; }
+.chat-bubble { display: grid; gap: 0.4rem; border-radius: 14px; padding: 0.85rem 1rem; max-width: 85%; }
+.chat-bubble-user { justify-self: end; background: var(--primary); color: white; }
+.chat-bubble-assistant { justify-self: start; background: white; border: 1px solid var(--border); }
+.chat-bubble-content { margin: 0; white-space: pre-wrap; line-height: 1.65; }
+.chat-citations { display: grid; gap: 0.4rem; }
+.chat-citation { border: 1px solid var(--border); border-radius: 10px; background: #faf8f1; overflow: hidden; font-size: 0.85rem; }
+.chat-citation summary { display: grid; gap: 0.15rem; padding: 0.6rem 0.8rem; cursor: pointer; }
+.chat-citation summary small { color: var(--muted); }
+.chat-form { display: grid; gap: 0.55rem; }
+.chat-form textarea { margin: 0; }
+
 @media (max-width: 720px) {
   .app-shell { padding: 1rem; }
   .topbar { align-items: flex-start; }
@@ -219,4 +236,6 @@ textarea { resize: vertical; }
   .research-columns { grid-template-columns: 1fr; }
   .operations-summary { grid-template-columns: 1fr; }
   .job-item { align-items: flex-start; }
+  .chat-layout { grid-template-columns: 1fr; }
+  .chat-conversations { border-right: 0; border-bottom: 1px solid var(--border); padding-right: 0; padding-bottom: 0.75rem; max-height: 12rem; }
 }

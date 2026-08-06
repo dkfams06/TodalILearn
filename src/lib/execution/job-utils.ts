@@ -19,4 +19,5 @@ export const JOB_TYPE_LABELS: Record<LocalJobType, string> = {
   sermon: '설교 생성',
   sermon_export: '옵시디언 저장',
   sermon_sync: '옵시디언 동기화',
+  chat: '자료 채팅',
 }

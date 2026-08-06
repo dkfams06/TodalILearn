@@ -26,6 +26,7 @@ const { createResearchBundle } = await import('../src/lib/research/research')
 const { createSermonDraft } = await import('../src/lib/sermon/generate')
 const { exportSermon } = await import('../src/lib/sermon/export-store')
 const { checkSermonSync } = await import('../src/lib/sermon/sync-store')
+const { answerChatMessage } = await import('../src/lib/chat/chat')
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim()
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()
@@ -159,6 +160,27 @@ while (!stopping) {
         sermonId: payload.sermonId,
         userId: user.id,
         outputFolder: settings.outputFolder,
+      })
+    } else if (job.job_type === 'chat') {
+      const payload = job.payload as {
+        conversationId?: unknown
+        userMessageId?: unknown
+        message?: unknown
+      }
+      if (
+        typeof payload.conversationId !== 'string' ||
+        typeof payload.userMessageId !== 'string' ||
+        typeof payload.message !== 'string'
+      ) {
+        throw new Error('대화 ID 또는 메시지가 없습니다.')
+      }
+      result = await answerChatMessage({
+        database,
+        userId: user.id,
+        model,
+        conversationId: payload.conversationId,
+        userMessageId: payload.userMessageId,
+        message: payload.message,
       })
     } else {
       throw new Error(`지원하지 않는 작업: ${job.job_type}`)
